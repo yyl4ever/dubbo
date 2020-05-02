@@ -1,6 +1,8 @@
 package com.company.bbkb.provider;
 
+import com.company.bbkb.framework.Protocol;
 import com.company.bbkb.framework.URL;
+import com.company.bbkb.protocol.http.HttpProtocol;
 import com.company.bbkb.protocol.http.HttpServer;
 import com.company.bbkb.provider.service.IHelloService;
 import com.company.bbkb.provider.service.impl.HelloServiceImpl;
@@ -23,7 +25,10 @@ public class Provider {
         RemoteMapRegister.register(IHelloService.class.getName(), url);
 
         // 3. 启动 tomcat
-        HttpServer httpServer = new HttpServer();
-        httpServer.start("localhost", 8080);
+        //HttpServer httpServer = new HttpServer();
+        // httpServer.start("localhost", 8080);
+
+        Protocol httpProtocol = new HttpProtocol();
+        httpProtocol.start(url);
     }
 }
