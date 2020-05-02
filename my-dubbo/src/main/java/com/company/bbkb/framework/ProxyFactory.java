@@ -27,12 +27,13 @@ public class ProxyFactory {
             @Override
             public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
                 //HttpClient httpClient = new HttpClient();
-                Protocol httpProtocol = new HttpProtocol();
+                //Protocol protocol = new HttpProtocol();
+                Protocol protocol = ProtocolFactory.getProtocol();
                 //Invocation invocation = new Invocation(IHelloService.class.getName(), "sayHello", new Class[]{String.class}, new Object[]{"yyl"});
                 Invocation invocation = new Invocation(interfaceClass.getName(), method.getName(), method.getParameterTypes(), args);
 
                 URL url = RemoteMapRegister.random(interfaceClass.getName());
-                String result = httpProtocol.send(url, invocation);
+                String result = protocol.send(url, invocation);
                 //String result = httpClient.send("localhost", 8080, invocation);
                 return result;
             }

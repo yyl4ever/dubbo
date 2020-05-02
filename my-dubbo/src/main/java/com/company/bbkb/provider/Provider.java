@@ -1,6 +1,7 @@
 package com.company.bbkb.provider;
 
 import com.company.bbkb.framework.Protocol;
+import com.company.bbkb.framework.ProtocolFactory;
 import com.company.bbkb.framework.URL;
 import com.company.bbkb.protocol.http.HttpProtocol;
 import com.company.bbkb.protocol.http.HttpServer;
@@ -28,7 +29,11 @@ public class Provider {
         //HttpServer httpServer = new HttpServer();
         // httpServer.start("localhost", 8080);
 
-        Protocol httpProtocol = new HttpProtocol();
-        httpProtocol.start(url);
+        // 一个接口多个实现，为避免切换时修改代码，需要更改为工厂模式
+        /*Protocol httpProtocol = new HttpProtocol();
+        httpProtocol.start(url);*/
+
+        Protocol protocol = ProtocolFactory.getProtocol();
+        protocol.start(url);
     }
 }
