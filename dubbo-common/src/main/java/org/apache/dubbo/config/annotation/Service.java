@@ -67,6 +67,7 @@ public @interface Service {
     String path() default "";
 
     /**
+     * 是否进行服务导出
      * Whether to export service, default value is true
      */
     boolean export() default true;

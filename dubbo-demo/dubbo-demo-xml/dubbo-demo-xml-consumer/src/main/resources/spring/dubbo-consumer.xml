@@ -25,6 +25,7 @@
 
     <dubbo:registry address="zookeeper://127.0.0.1:2181"/>
 
+    <!--服务引用，我现在要使用哪个服务-->
     <dubbo:reference id="demoService" check="false" interface="org.apache.dubbo.demo.DemoService"/>
 
 </beans>

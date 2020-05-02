@@ -25,6 +25,12 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.CompletableFuture;
 
+/**
+ * @Service 是 dubbo 自己建立的注解，用于
+ * 生成两个 Bean
+ * DemoServiceImpl --> demoServiceImpl
+ * ServiceBean --> demoService
+ */
 @Service
 public class DemoServiceImpl implements DemoService {
     private static final Logger logger = LoggerFactory.getLogger(DemoServiceImpl.class);

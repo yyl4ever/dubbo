@@ -19,6 +19,11 @@ package org.apache.dubbo.demo.provider;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
 
 public class Application {
+    /**
+     * yyl 可以从这里开始看
+     * @param args
+     * @throws Exception
+     */
     public static void main(String[] args) throws Exception {
         ClassPathXmlApplicationContext context = new ClassPathXmlApplicationContext("spring/dubbo-provider.xml");
         context.start();

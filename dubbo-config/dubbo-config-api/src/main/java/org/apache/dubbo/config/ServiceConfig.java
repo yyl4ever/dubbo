@@ -312,9 +312,17 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
                 serviceMetadata
         );
 
+
+        // 加载注册中心
         List<URL> registryURLs = ConfigValidationUtils.loadRegistries(this, true);
 
+        // 遍历每个协议
+        // 一个协议一个服务
         for (ProtocolConfig protocolConfig : protocols) {
+            // path 表示服务名
+            // contextPath 表示应用名(可配置)
+            // pathKey = group/contextpath/path:version
+            // 例子: myGroup/user/org.apache.dubbo.demo.DemoService:2.0.1
             String pathKey = URL.buildKey(getContextPath(protocolConfig)
                     .map(p -> p + "/" + path)
                     .orElse(path), group, version);
