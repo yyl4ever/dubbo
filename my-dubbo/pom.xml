@@ -5,8 +5,16 @@
     <modelVersion>4.0.0</modelVersion>
 
     <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <encoding>UTF-8</encoding>
+        <java.version>1.8</java.version>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
+
         <commons_lang_version>2.5</commons_lang_version>
         <guava_version>20.0</guava_version>
+
+        <revision>2.7.7-SNAPSHOT</revision>
 
     </properties>
 
@@ -42,6 +50,18 @@
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
             <version>${guava_version}</version>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.12</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.dubbo</groupId>
+            <artifactId>dubbo-common</artifactId>
+            <version>${revision}</version>
         </dependency>
     </dependencies>
 

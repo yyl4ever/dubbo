@@ -18,6 +18,7 @@ package org.apache.dubbo.common.utils;
 
 /**
  * Helper Class for hold a value.
+ * 这就是源码的美丽之处
  */
 public class Holder<T> {
 

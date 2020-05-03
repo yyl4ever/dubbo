@@ -1,0 +1,4 @@
+black=com.company.bbkb.spi.service.impl.BlackCar
+white=com.company.bbkb.spi.service.impl.WhiteCar
+# 实现AOP功能
+# com.company.bbkb.spi.service.impl.CarWrapper
