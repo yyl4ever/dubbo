@@ -1,7 +1,6 @@
 package com.company.bbkb.register;
 
 import com.company.bbkb.framework.URL;
-import com.google.common.collect.Collections2;
 import com.google.common.collect.Lists;
 import org.apache.commons.collections.CollectionUtils;
 
@@ -11,33 +10,40 @@ import java.util.*;
 /**
  * @Author: yangyl
  * @Date: 2020-05-02 19:12
- * @Description: 模拟远程注册中心,实际一般用 zk，redis， nacos
+ * @Description: 模拟远程注册中心, 实际一般用 zk，redis， nacos
  */
 public class RemoteMapRegister {
-    public static Map<String, List<URL>> REGISTER = new HashMap<>();
+    private static Map<String, List<URL>> REGISTER = new HashMap<>();
 
     /**
-     * 注册,<服务名:List<URL>>
+     * 注册,<服务名:Set<URL>>
+     *
      * @param interfaceName
      * @param url
      */
     public static void register(String interfaceName, URL url) {
+        // 借鉴 dubbo 中相关代码的加锁思想，暂时处理并发问题
         List<URL> urls = REGISTER.get(interfaceName);
-        // todo 有并发的问题
-        if (CollectionUtils.isEmpty(urls)) {
-            urls = Lists.newArrayList(url);
-            REGISTER.put(interfaceName, urls);
-        } else {
+        if (urls == null) {
+            synchronized (REGISTER) {
+                urls = REGISTER.get(interfaceName);
+                if (urls == null) {
+                    urls = new ArrayList<>();
+                    REGISTER.put(interfaceName, urls);
+                }
+            }
+        }
+        // 需要重写 URL 的 equals、hashCode 方法
+        if (!urls.contains(url)) {
             urls.add(url);
         }
 
+        // todo 对文件的操作最好用读写锁，由于是多 JVM 进程访问，还需要考虑分布式锁
         saveFile();
     }
 
-
-
     public static URL random(String interfaceName) {
-         REGISTER = getFile();
+        REGISTER = getFile();
 
         List<URL> urls = REGISTER.get(interfaceName);
         Random random = new Random();
