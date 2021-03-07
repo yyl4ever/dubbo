@@ -31,7 +31,7 @@ import java.util.concurrent.CompletableFuture;
  * DemoServiceImpl --> demoServiceImpl
  * ServiceBean --> demoService
  */
-@Service
+@Service //能被扫描到，暴露成 Dubbo 服务
 public class DemoServiceImpl implements DemoService {
     private static final Logger logger = LoggerFactory.getLogger(DemoServiceImpl.class);
 

@@ -31,6 +31,8 @@ public class Application {
      * launch the application
      */
     public static void main(String[] args) {
+        // 通过 AnnotationConfigApplicationContext 初始化 Spring 容器，
+        // 也会扫描指定目录下的 Bean，会扫到 DemoServiceComponent 这个 Bean，其中就通过 @Reference 注解注入 Dubbo 服务相关的 Bean
         AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext(ConsumerConfiguration.class);
         context.start();
         DemoService service = context.getBean("demoServiceComponent", DemoServiceComponent.class);

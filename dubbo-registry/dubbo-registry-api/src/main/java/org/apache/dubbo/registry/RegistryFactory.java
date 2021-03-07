@@ -42,7 +42,7 @@ public interface RegistryFactory {
      * @param url Registry address, is not allowed to be empty
      * @return Registry reference, never return empty value
      */
-    @Adaptive({"protocol"})
-    Registry getRegistry(URL url);
+    @Adaptive({"protocol"})//Dubbo 在运行时会为其动态生成相应的 “$Adaptive” 类型
+    Registry getRegistry(URL url);//URL 一个很重要的作用就是与 @Adaptive 注解一起选择合适的扩展实现类，比如 ZookeeperRegistryFactory todo
 
 }

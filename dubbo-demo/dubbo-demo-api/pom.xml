@@ -38,7 +38,7 @@
         <skip_maven_deploy>true</skip_maven_deploy>
         <spring-boot-maven-plugin.version>2.1.4.RELEASE</spring-boot-maven-plugin.version>
     </properties>
-
+    <!--在有的场景中，不能依赖于 Spring 框架，只能使用 API 来构建 Dubbo Provider 和 Consumer，比较典型的一种场景就是在写 SDK 的时候。-->
     <artifactId>dubbo-demo-api</artifactId>
 
     <build>

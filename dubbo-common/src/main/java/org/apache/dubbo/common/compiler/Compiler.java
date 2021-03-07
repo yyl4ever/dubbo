@@ -14,12 +14,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+// 动态编译相关实现
 package org.apache.dubbo.common.compiler;
 
 import org.apache.dubbo.common.extension.SPI;
 
 /**
  * Compiler. (SPI, Singleton, ThreadSafe)
+ *
  */
 @SPI("javassist")
 public interface Compiler {

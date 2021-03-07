@@ -30,6 +30,7 @@ import java.util.Set;
 
 /**
  * SpringExtensionFactory
+ * 将属性名称作为 Spring Bean 的名称，从 Spring 容器中获取 Bean
  */
 public class SpringExtensionFactory implements ExtensionFactory {
     private static final Logger logger = LoggerFactory.getLogger(SpringExtensionFactory.class);
@@ -61,12 +62,12 @@ public class SpringExtensionFactory implements ExtensionFactory {
     public <T> T getExtension(Class<T> type, String name) {
 
         //SPI should be get from SpiExtensionFactory
-        if (type.isInterface() && type.isAnnotationPresent(SPI.class)) {
+        if (type.isInterface() && type.isAnnotationPresent(SPI.class)) {// 检查:type必须为接口且必须包含@SPI注解
             return null;
         }
 
         for (ApplicationContext context : CONTEXTS) {
-            T bean = BeanFactoryUtils.getOptionalBean(context, name, type);
+            T bean = BeanFactoryUtils.getOptionalBean(context, name, type);// 从Spring容器中查找Bean
             if (bean != null) {
                 return bean;
             }

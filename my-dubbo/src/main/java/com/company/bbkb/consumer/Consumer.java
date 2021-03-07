@@ -21,6 +21,7 @@ public class Consumer {
 
     public static void main(String[] args) {
         IHelloService helloService = ProxyFactory.getProxy(IHelloService.class);
+        // 调用代理对象的 invoke 方法
         String cx = helloService.sayHello("cx");
         System.out.println(cx);
     }

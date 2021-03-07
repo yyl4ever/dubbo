@@ -57,7 +57,7 @@ import static org.apache.dubbo.common.constants.RegistryConstants.ROUTERS_CATEGO
 
 /**
  * ZookeeperRegistry
- *
+ * 具体实现类，实现与 Zookeeper 等注册中心交互的逻辑
  */
 public class ZookeeperRegistry extends FailbackRegistry {
 
@@ -125,7 +125,9 @@ public class ZookeeperRegistry extends FailbackRegistry {
 
     @Override
     public void doRegister(URL url) {
-        try {
+        try {//传入的 URL 中包含了 Provider 的地址（172.18.112.15:20880）、暴露的接口（org.apache.dubbo.demo.DemoService）等信息，
+            // toUrlPath() 方法会根据传入的 URL 参数确定在 ZooKeeper 上创建的节点路径，
+            // 还会通过 URL 中的 dynamic 参数值确定创建的 ZNode 是临时节点还是持久节点。
             zkClient.create(toUrlPath(url), url.getParameter(DYNAMIC_KEY, true));
         } catch (Throwable e) {
             throw new RpcException("Failed to register " + url + " to zookeeper " + getUrl() + ", cause: " + e.getMessage(), e);
@@ -141,8 +143,11 @@ public class ZookeeperRegistry extends FailbackRegistry {
         }
     }
 
-    @Override
+    @Override//订阅操作的核心实现
     public void doSubscribe(final URL url, final NotifyListener listener) {
+        // URL:Protocol 为 consumer ，表示是 Consumer 的订阅协议，其中的 category 参数表示要订阅的分类，
+        // 这里要订阅 providers、configurators 以及 routers 三个分类；interface 参数表示订阅哪个服务接口，
+        // 这里要订阅的是暴露 org.apache.dubbo.demo.DemoService 实现的 Provider。
         try {
             if (ANY_VALUE.equals(url.getServiceInterface())) {
                 String root = toRootPath();
@@ -169,7 +174,7 @@ public class ZookeeperRegistry extends FailbackRegistry {
                 }
             } else {
                 List<URL> urls = new ArrayList<>();
-                for (String path : toCategoriesPath(url)) {
+                for (String path : toCategoriesPath(url)) {//toCategoriesPath() 方法中将其整理成一个 ZooKeeper 路径，然后调用 zkClient 在其上添加监听。
                     ConcurrentMap<NotifyListener, ChildListener> listeners = zkListeners.computeIfAbsent(url, k -> new ConcurrentHashMap<>());
                     ChildListener zkListener = listeners.computeIfAbsent(listener, k -> (parentPath, currentChilds) -> ZookeeperRegistry.this.notify(url, k, toUrlsWithEmpty(url, parentPath, currentChilds)));
                     zkClient.create(path, false);

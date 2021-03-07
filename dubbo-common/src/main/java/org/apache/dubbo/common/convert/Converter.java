@@ -14,6 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+// 比较实用的类型转换器集合
 package org.apache.dubbo.common.convert;
 
 import org.apache.dubbo.common.extension.ExtensionLoader;

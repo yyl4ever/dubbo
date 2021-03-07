@@ -1,4 +1,5 @@
+#spi其实就是一种动态指定实现类的机制
 black=com.company.bbkb.spi.service.impl.BlackCar
 white=com.company.bbkb.spi.service.impl.WhiteCar
-# 实现AOP功能
+# 放开下面的注释，即实现AOP功能
 # com.company.bbkb.spi.service.impl.CarWrapper

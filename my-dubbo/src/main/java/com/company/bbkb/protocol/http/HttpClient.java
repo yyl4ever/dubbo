@@ -33,7 +33,7 @@ public class HttpClient {
             urlConnection.setRequestMethod("POST");
             urlConnection.setDoOutput(true);
 
-            // 对象通过输出流发送出去
+            // 1 对象通过输出流发送出去
             OutputStream outputStream = urlConnection.getOutputStream();
             ObjectOutputStream oos = new ObjectOutputStream(outputStream);
 
@@ -41,7 +41,7 @@ public class HttpClient {
             oos.flush();
             oos.close();
 
-            // 接收服务提供方的返回结果
+            // 2 接收服务提供方的返回结果
             InputStream inputStream = urlConnection.getInputStream();
             String result = IOUtils.toString(inputStream);
             return result;

@@ -14,6 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+// 线程池相关的工具类
 package org.apache.dubbo.common.threadpool;
 
 import org.apache.dubbo.common.URL;

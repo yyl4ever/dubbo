@@ -1,1 +1,2 @@
+#java spi 文件名用接口名，内容是实现类
 com.company.bbkb.protocol.http.HttpProtocol

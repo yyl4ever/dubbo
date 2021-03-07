@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+// 一些常量定义，尤其是 URL 参数的 key
 package org.apache.dubbo.common.constants;
 
 import org.apache.dubbo.common.URL;

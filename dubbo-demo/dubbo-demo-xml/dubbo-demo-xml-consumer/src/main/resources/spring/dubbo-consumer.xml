@@ -22,9 +22,10 @@
        http://dubbo.apache.org/schema/dubbo http://dubbo.apache.org/schema/dubbo/dubbo.xsd">
 
     <dubbo:application name="demo-consumer"/>
-
+    <!-- Zookeeper地址 ，这样 Dubbo 才能从 ZooKeeper 中拉取到 Provider 暴露的服务列表信息-->
     <dubbo:registry address="zookeeper://127.0.0.1:2181"/>
 
+    <!--引入DemoService服务，并配置成Spring Bean-->
     <!--服务引用，我现在要使用哪个服务-->
     <dubbo:reference id="demoService" check="false" interface="org.apache.dubbo.demo.DemoService"/>
 

@@ -22,6 +22,7 @@
         <version>${revision}</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
+    <!--Dubbo 的监控模块，主要用于统计服务调用次数、调用时间以及实现调用链跟踪的服务。-->
     <artifactId>dubbo-monitor</artifactId>
     <packaging>pom</packaging>
     <name>${project.artifactId}</name>

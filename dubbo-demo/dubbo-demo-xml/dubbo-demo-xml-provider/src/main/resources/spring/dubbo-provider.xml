@@ -25,12 +25,14 @@
     <dubbo:application metadata-type="remote" name="demo-provider"/>
     <dubbo:metadata-report address="zookeeper://127.0.0.1:2181"/>
 
-    <dubbo:registry address="zookeeper://127.0.0.1:2181"/>
+    <!--指定注册中心地址（就是 ZooKeeper 的地址）,这样 Dubbo 才能把暴露的 DemoService 服务注册到 ZooKeeper 中-->
+    <dubbo:registry address="zookeeper://127.0.0.1:2181" timeout="25000"/>
 
     <dubbo:protocol name="dubbo"/>
-
+    <!-- 配置为 Spring Bean -->
     <bean id="demoService" class="org.apache.dubbo.demo.provider.DemoServiceImpl"/>
 
+    <!-- 作为 Dubbo 服务暴露出去 -->
     <!--暴露服务，注册服务，即「服务导出」-->
     <dubbo:service interface="org.apache.dubbo.demo.DemoService" ref="demoService"/>
 

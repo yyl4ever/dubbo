@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+// ThreadLocal 相关工具类
 package org.apache.dubbo.common.threadlocal;
 
 /**

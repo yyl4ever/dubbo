@@ -25,6 +25,7 @@ public class Application {
      * @throws Exception
      */
     public static void main(String[] args) throws Exception {
+        // 指定 Spring 配置文件并启动 ClassPathXmlApplicationContext 即可。
         ClassPathXmlApplicationContext context = new ClassPathXmlApplicationContext("spring/dubbo-provider.xml");
         context.start();
         System.in.read();

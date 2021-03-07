@@ -22,6 +22,10 @@
         <version>${revision}</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
+    <!--Dubbo 中对远程调用协议进行抽象的模块，其中抽象了各种协议，依赖于 dubbo-remoting 模块的远程调用功能。
+    dubbo-rpc-api 子模块是核心抽象，其他子模块是针对具体协议的实现，例如，dubbo-rpc-dubbo 子模块
+    是对 Dubbo 协议的实现，依赖了 dubbo-remoting-netty4 等 dubbo-remoting 子模块。
+    dubbo-rpc 模块的实现中只包含一对一的调用，不关心集群的相关内容。-->
     <artifactId>dubbo-rpc</artifactId>
     <packaging>pom</packaging>
     <name>${project.artifactId}</name>

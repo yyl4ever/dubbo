@@ -39,7 +39,7 @@ public interface Constants {
 
     /**
      * The default value of cluster.availablecheck
-     *
+     * 可用性检查配置，默认为 true
      * @see #CLUSTER_AVAILABLE_CHECK_KEY
      */
     boolean DEFAULT_CLUSTER_AVAILABLE_CHECK = true;
@@ -51,7 +51,7 @@ public interface Constants {
 
     /**
      * The default value of sticky
-     *
+     * 粘滞连接配置默认是 false
      * @see #CLUSTER_STICKY_KEY
      */
     boolean DEFAULT_CLUSTER_STICKY = false;

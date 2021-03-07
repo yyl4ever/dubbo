@@ -22,6 +22,9 @@
         <version>${revision}</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
+    <!--Dubbo 中负责与多种开源注册中心进行交互的模块，提供注册中心的能力。
+    其中， dubbo-registry-api 子模块是顶层抽象，其他子模块是针对具体开源注册中心组件的具体实现，
+    例如，dubbo-registry-zookeeper 子模块是 Dubbo 接入 ZooKeeper 的具体实现。-->
     <artifactId>dubbo-registry</artifactId>
     <packaging>pom</packaging>
     <name>${project.artifactId}</name>

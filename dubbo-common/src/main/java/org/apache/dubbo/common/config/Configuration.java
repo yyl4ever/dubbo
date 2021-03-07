@@ -14,12 +14,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+// 配置相关实现
 package org.apache.dubbo.common.config;
 
 import java.util.NoSuchElementException;
 
 /**
  * Configuration interface, to fetch the value for the specified key.
+ *
  */
 public interface Configuration {
     /**

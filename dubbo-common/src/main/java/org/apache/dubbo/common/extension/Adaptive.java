@@ -14,6 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+// dubbo spi 的核心实现
 package org.apache.dubbo.common.extension;
 
 import org.apache.dubbo.common.URL;

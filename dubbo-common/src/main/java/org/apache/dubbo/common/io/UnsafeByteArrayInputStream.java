@@ -14,6 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+// 一些 IO 相关的工具类
 package org.apache.dubbo.common.io;
 
 import java.io.IOException;

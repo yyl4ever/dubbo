@@ -7,6 +7,7 @@ import com.company.bbkb.spi.service.Car;
  * @Date: 2020-05-03 11:25
  * @Description: SPI 实现 AOP
  */
+// 必须要实现想要被 aop 的接口
 public class CarWrapper implements Car {
     private Car car;
 

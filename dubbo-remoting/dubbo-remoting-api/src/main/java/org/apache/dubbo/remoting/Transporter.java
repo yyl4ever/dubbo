@@ -40,7 +40,7 @@ public interface Transporter {
      * @throws RemotingException
      * @see org.apache.dubbo.remoting.Transporters#bind(URL, ChannelHandler...)
      */
-    @Adaptive({Constants.SERVER_KEY, Constants.TRANSPORTER_KEY})
+    @Adaptive({Constants.SERVER_KEY, Constants.TRANSPORTER_KEY})//Dubbo 会生成一个 Transporter$Adaptive 适配器类，该类继承了 Transporter 接口
     RemotingServer bind(URL url, ChannelHandler handler) throws RemotingException;
 
     /**
@@ -52,7 +52,8 @@ public interface Transporter {
      * @throws RemotingException
      * @see org.apache.dubbo.remoting.Transporters#connect(URL, ChannelHandler...)
      */
-    @Adaptive({Constants.CLIENT_KEY, Constants.TRANSPORTER_KEY})
+    @Adaptive({Constants.CLIENT_KEY, Constants.TRANSPORTER_KEY})//// 确定扩展名，优先从URL中的client参数获取，其次是transporter参数
+    // 这两个参数名称由@Adaptive注解指定，最后是@SPI注解中的默认值
     Client connect(URL url, ChannelHandler handler) throws RemotingException;
 
 }

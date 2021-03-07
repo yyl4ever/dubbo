@@ -22,6 +22,9 @@
         <version>${revision}</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
+    <!--子模块中定义远程通信模块的抽象概念,
+    在其他子模块中依赖其他开源组件进行实现，例如，dubbo-remoting-netty4 子模块依赖 Netty 4 实现远程通信，
+    dubbo-remoting-zookeeper 通过 Apache Curator 实现与 ZooKeeper 集群的交互。-->
     <artifactId>dubbo-remoting-api</artifactId>
     <packaging>jar</packaging>
     <name>${project.artifactId}</name>

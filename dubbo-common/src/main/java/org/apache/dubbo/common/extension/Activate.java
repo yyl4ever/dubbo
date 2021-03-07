@@ -49,6 +49,7 @@ public @interface Activate {
      *
      * @return group names to match
      * @see ExtensionLoader#getActivateExtension(URL, String, String)
+     * 修饰的实现类是在 Provider 端被激活还是在 Consumer 端被激活。
      */
     String[] group() default {};
 
@@ -62,6 +63,7 @@ public @interface Activate {
      * @return URL parameter keys
      * @see ExtensionLoader#getActivateExtension(URL, String)
      * @see ExtensionLoader#getActivateExtension(URL, String, String)
+     * 修饰的实现类只在 URL 参数中出现指定的 key 时才会被激活。
      */
     String[] value() default {};
 
@@ -87,6 +89,7 @@ public @interface Activate {
      * Absolute ordering info, optional
      *
      * @return absolute ordering info
+     * 用来确定扩展实现类的排序。
      */
     int order() default 0;
 }

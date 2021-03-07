@@ -29,6 +29,7 @@ public class Application {
      * yyl 可以从这里开始看
      */
     public static void main(String[] args) throws Exception {
+        // 指定 Spring 配置文件并启动 ClassPathXmlApplicationContext 之后，就可以远程调用 Provider 端的 DemoService 的 sayHello() 方法了
         ClassPathXmlApplicationContext context = new ClassPathXmlApplicationContext("spring/dubbo-consumer.xml");
         context.start();
         DemoService demoService = context.getBean("demoService", DemoService.class);

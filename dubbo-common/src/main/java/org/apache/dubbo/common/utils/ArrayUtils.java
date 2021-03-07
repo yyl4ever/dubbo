@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+// 一些通用的工具类集合
 package org.apache.dubbo.common.utils;
 
 /**

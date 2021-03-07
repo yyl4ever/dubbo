@@ -38,13 +38,15 @@ public class Application {
     }
 
     private static void startWithBootstrap() {
+        // 创建一个ServiceConfig的实例，泛型参数是业务接口实现类，即DemoServiceImpl
         ServiceConfig<DemoServiceImpl> service = new ServiceConfig<>();
-        service.setInterface(DemoService.class);
-        service.setRef(new DemoServiceImpl());
+        service.setInterface(DemoService.class);// 指定业务接口
+        service.setRef(new DemoServiceImpl());// 指定业务接口的实现，由该对象来处理Consumer的请求
 
-        DubboBootstrap bootstrap = DubboBootstrap.getInstance();
+        DubboBootstrap bootstrap = DubboBootstrap.getInstance();// 获取DubboBootstrap实例，这是个单例的对象
+        //生成一个 ApplicationConfig 的实例、指定ZK地址以及ServiceConfig实例
         bootstrap.application(new ApplicationConfig("dubbo-demo-api-provider"))
-                .registry(new RegistryConfig("zookeeper://127.0.0.1:2181"))
+                .registry(new RegistryConfig("zookeeper://127.0.0.1:2181?timeout=25000"))
                 .service(service)
                 .start()
                 .await();

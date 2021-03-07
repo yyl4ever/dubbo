@@ -22,6 +22,7 @@
         <version>${revision}</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
+    <!--动态配置模块，主要负责外部化配置以及服务治理规则的存储与通知，提供了多个子模块用来接入多种开源的服务发现组件。-->
     <artifactId>dubbo-configcenter</artifactId>
     <packaging>pom</packaging>
     <name>${project.artifactId}</name>

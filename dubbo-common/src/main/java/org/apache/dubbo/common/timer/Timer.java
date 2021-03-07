@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-
+// 时间轮的核心实现
 package org.apache.dubbo.common.timer;
 
 import java.util.Set;

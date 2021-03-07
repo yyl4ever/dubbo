@@ -1,8 +1,6 @@
 package com.company.bbkb.register;
 
 import com.company.bbkb.framework.URL;
-import com.google.common.collect.Lists;
-import org.apache.commons.collections.CollectionUtils;
 
 import java.io.*;
 import java.util.*;
@@ -38,10 +36,16 @@ public class RemoteMapRegister {
             urls.add(url);
         }
 
+        // 用文件共享来存放 URL 地址，避免服务提供方进程启动加载了地址，但消费方进程启动却读取不到的问题
         // todo 对文件的操作最好用读写锁，由于是多 JVM 进程访问，还需要考虑分布式锁
         saveFile();
     }
 
+    /**
+     * 模拟负载均衡
+     * @param interfaceName
+     * @return
+     */
     public static URL random(String interfaceName) {
         REGISTER = getFile();
 
@@ -68,7 +72,7 @@ public class RemoteMapRegister {
         try {
             FileOutputStream fileOutputStream = new FileOutputStream("./tmp.txt");
             ObjectOutputStream oos = new ObjectOutputStream(fileOutputStream);
-            // REGISTER 内的元素都要序列化才能输出到文件流
+            // REGISTER 内的元素都要序列化才能输出到文件流 -- 这就要求 Map 中存储的 URL 也要序列化
             oos.writeObject(REGISTER);
         } catch (IOException e) {
             e.printStackTrace();

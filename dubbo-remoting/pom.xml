@@ -23,6 +23,7 @@
         <version>${revision}</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
+    <!--Dubbo 的远程通信模块，其中的子模块依赖各种开源组件实现远程通信。-->
     <artifactId>dubbo-remoting</artifactId>
     <packaging>pom</packaging>
     <name>${project.artifactId}</name>

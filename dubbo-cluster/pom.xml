@@ -22,6 +22,9 @@
         <version>${revision}</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
+    <!-- Dubbo 中负责管理集群的模块，提供了负载均衡、容错、路由等一系列集群相关的功能，
+    最终的目的是将多个 Provider 伪装为一个 Provider，这样 Consumer 就可以
+    像调用一个 Provider 那样调用 Provider 集群了。-->
     <artifactId>dubbo-cluster</artifactId>
     <packaging>jar</packaging>
     <name>${project.artifactId}</name>

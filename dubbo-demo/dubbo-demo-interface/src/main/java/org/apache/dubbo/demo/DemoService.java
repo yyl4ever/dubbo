@@ -20,8 +20,8 @@ import java.util.concurrent.CompletableFuture;
 
 public interface DemoService {
 
-    String sayHello(String name);
-
+    String sayHello(String name); // 同步调用
+    // 异步调用
     default CompletableFuture<String> sayHelloAsync(String name) {
         return CompletableFuture.completedFuture(sayHello(name));
     }

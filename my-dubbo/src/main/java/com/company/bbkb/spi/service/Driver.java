@@ -11,6 +11,8 @@ import org.apache.dubbo.common.extension.SPI;
  */
 @SPI
 public interface Driver {
-    @Adaptive(value = "car")
+    // 依赖注入，其中 carType 是入参 URL 中内容的某个 key
+    @Adaptive(value = "carType")
+    // URL 是 dubbo 中的概念
     void driveCar(URL url);
 }

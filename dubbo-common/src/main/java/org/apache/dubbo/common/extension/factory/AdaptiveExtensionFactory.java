@@ -26,8 +26,12 @@ import java.util.List;
 
 /**
  * AdaptiveExtensionFactory
+ * @Adaptive 注解用来实现 Dubbo 的适配器功能
+ * AdaptiveExtensionFactory 不实现任何具体的功能，而是用来适配 ExtensionFactory 的 SpiExtensionFactory
+ * 和 SpringExtensionFactory 这两种实现。AdaptiveExtensionFactory 会根据运行时的一些
+ * 状态来选择具体调用 ExtensionFactory 的哪个实现。
  */
-@Adaptive
+@Adaptive//适配器什么实际工作都不用做，就是根据参数和状态选择其他实现来完成工作。
 public class AdaptiveExtensionFactory implements ExtensionFactory {
 
     private final List<ExtensionFactory> factories;

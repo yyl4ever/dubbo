@@ -66,7 +66,10 @@ import static org.apache.dubbo.registry.Constants.REGISTRY_FILESAVE_SYNC_KEY;
 import static org.apache.dubbo.registry.Constants.REGISTRY__LOCAL_FILE_CACHE_ENABLED;
 
 /**
+ * 实现缓存机制 -- yyl
  * AbstractRegistry. (SPI, Prototype, ThreadSafe)
+ * 如果每次服务调用都需要调用注册中心实时查询可用服务列表，不但会让注册中心承受巨大的流量压力，还会产生额外的网络请求，导致系统性能下降。
+ * 其次注册中心需要非强依赖，其宕机不能影响正常的服务调用。
  */
 public abstract class AbstractRegistry implements Registry {
 
@@ -88,6 +91,8 @@ public abstract class AbstractRegistry implements Registry {
     private final AtomicInteger savePropertiesRetryTimes = new AtomicInteger();
     private final Set<URL> registered = new ConcurrentHashSet<>();
     private final ConcurrentMap<URL, Set<NotifyListener>> subscribed = new ConcurrentHashMap<>();
+    // 内存服务缓存，key 为消费者的 URL，而 value 为一个 Map 集合。
+    // 这个内层 Map 集合使用服务目录作为 key，分别为 providers，routers，configurators，consumers 四类，value 则是对应服务列表集合
     private final ConcurrentMap<URL, Map<String, List<URL>>> notified = new ConcurrentHashMap<>();
     private URL registryUrl;
     // Local disk cache file
@@ -95,10 +100,15 @@ public abstract class AbstractRegistry implements Registry {
 
     public AbstractRegistry(URL url) {
         setUrl(url);
+        //
         if (url.getParameter(REGISTRY__LOCAL_FILE_CACHE_ENABLED, true)) {
             // Start file save timer
             syncSaveFile = url.getParameter(REGISTRY_FILESAVE_SYNC_KEY, false);
+            // 文件缓存默认位置位于 ${user.home}/.dubbo/文件夹，文件名为dubbo-registry-${application.name}-${register_address}.cache
+            // 可以设置 dubbo.registry.file 配置信息从而修改默认配置
+            // C:\Users\xxx/.dubbo/dubbo-registry-dubbo-auto-configure-consumer-sample-127.0.0.1-2181.cache
             String defaultFilename = System.getProperty("user.home") + "/.dubbo/dubbo-registry-" + url.getParameter(APPLICATION_KEY) + "-" + url.getAddress().replaceAll(":", "-") + ".cache";
+            // 磁盘文件缓存
             String filename = url.getParameter(FILE_KEY, defaultFilename);
             File file = null;
             if (ConfigUtils.isNotEmpty(filename)) {
@@ -112,7 +122,11 @@ public abstract class AbstractRegistry implements Registry {
             this.file = file;
             // When starting the subscription center,
             // we need to read the local cache file for future Registry fault tolerance processing.
+            // dubbo 程序初始化的时候，AbstractRegistry 构造函数将会从本地磁盘文件中将数据读取到 Properties 对象实例中，
+            // 后续都将会先写入 Properties，最后再将里面信息再写入文件
+            // 缓存文件内容使用 properties 配置文件格式，即 key=value 格式。key为服务接口名称，value 为服务列表，由于服务可能存在多个，将会使用空格分隔
             loadProperties();
+            // 缓存文件将会通过 AbstractRegistry#notify 方法保存或更新。客户端第一次订阅服务获取的全量数据，或者后续回调中获取到新数据，都将会调用 AbstractRegistry#notify 方法，用来更新内存缓存以及文件缓存。
             notify(url.getBackupUrls());
         }
     }
@@ -162,7 +176,13 @@ public abstract class AbstractRegistry implements Registry {
         return lastCacheChanged;
     }
 
+    /**
+     * doSaveProperties 最终将信息写入缓存。考虑到保存方法可能会被多个线程同时调用，使用CAS方法，首先比较版本大小，
+     * 若小于，代表有新线程正在写入，本次更新直接丢弃。
+     * @param version
+     */
     public void doSaveProperties(long version) {
+        // 比较传入版本，如果小于，代表有其他线程在发起保存操作
         if (version < lastCacheChanged.get()) {
             return;
         }
@@ -171,6 +191,7 @@ public abstract class AbstractRegistry implements Registry {
         }
         // Save
         try {
+            // 考虑到多个 dubbo 应用可能共用一份缓存文件，所以这里使用文件排他锁当做分布式锁，防止多个应用并发操作同一份文件。
             File lockfile = new File(file.getAbsolutePath() + ".lock");
             if (!lockfile.exists()) {
                 lockfile.createNewFile();
@@ -186,6 +207,7 @@ public abstract class AbstractRegistry implements Registry {
                     if (!file.exists()) {
                         file.createNewFile();
                     }
+                    // 保存到文件
                     try (FileOutputStream outputFile = new FileOutputStream(file)) {
                         properties.store(outputFile, "Dubbo Registry Cache");
                     }
@@ -194,7 +216,9 @@ public abstract class AbstractRegistry implements Registry {
                 }
             }
         } catch (Throwable e) {
+            // 如果有其他 dubbo 应用正在操作缓存文件或者保存到文件异常，将会重试保存操作
             savePropertiesRetryTimes.incrementAndGet();
+            // 如果大于最大重试次数
             if (savePropertiesRetryTimes.get() >= MAX_RETRY_TIMES_SAVE_PROPERTIES) {
                 logger.warn("Failed to save registry cache file after retrying " + MAX_RETRY_TIMES_SAVE_PROPERTIES + " times, cause: " + e.getMessage(), e);
                 savePropertiesRetryTimes.set(0);
@@ -204,6 +228,7 @@ public abstract class AbstractRegistry implements Registry {
                 savePropertiesRetryTimes.set(0);
                 return;
             } else {
+                // 异步重试
                 registryCacheExecutor.execute(new SaveProperties(lastCacheChanged.incrementAndGet()));
             }
             logger.warn("Failed to save registry cache file, will retry, cause: " + e.getMessage(), e);
@@ -214,7 +239,9 @@ public abstract class AbstractRegistry implements Registry {
         if (file != null && file.exists()) {
             InputStream in = null;
             try {
+                // 读取磁盘缓存文件
                 in = new FileInputStream(file);
+                // 由于文件内容为键值对，所以使用 properties 对象文件保存
                 properties.load(in);
                 if (logger.isInfoEnabled()) {
                     logger.info("Load registry cache file " + file + ", data: " + properties);
@@ -418,6 +445,7 @@ public abstract class AbstractRegistry implements Registry {
         if (result.size() == 0) {
             return;
         }
+        // 更新内存缓存
         Map<String, List<URL>> categoryNotified = notified.computeIfAbsent(url, u -> new ConcurrentHashMap<>());
         for (Map.Entry<String, List<URL>> entry : result.entrySet()) {
             String category = entry.getKey();
@@ -426,10 +454,15 @@ public abstract class AbstractRegistry implements Registry {
             listener.notify(categoryList);
             // We will update our cache file after each notification.
             // When our Registry has a subscribe failure due to network jitter, we can return at least the existing cache URL.
+            // 保存或者更新文件缓存
             saveProperties(url);
         }
     }
 
+    /**
+     * 在保存文件缓存方法中，首先把根据 URL 取出的数据，拼接成字符串，然后写入上面提到过的 properties 对象中，最后输出到文件中。
+     * @param url
+     */
     private void saveProperties(URL url) {
         if (file == null) {
             return;
@@ -442,6 +475,7 @@ public abstract class AbstractRegistry implements Registry {
                 for (List<URL> us : categoryNotified.values()) {
                     for (URL u : us) {
                         if (buf.length() > 0) {
+                            // 多个服务列表将会使用空格隔开
                             buf.append(URL_SEPARATOR);
                         }
                         buf.append(u.toFullString());
@@ -451,8 +485,10 @@ public abstract class AbstractRegistry implements Registry {
             properties.setProperty(url.getServiceKey(), buf.toString());
             long version = lastCacheChanged.incrementAndGet();
             if (syncSaveFile) {
+                // 同步保存
                 doSaveProperties(version);
             } else {
+                // 异步保存，系统默认使用异步方式保存
                 registryCacheExecutor.execute(new SaveProperties(version));
             }
         } catch (Throwable t) {

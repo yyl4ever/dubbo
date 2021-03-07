@@ -43,12 +43,13 @@ import static org.apache.dubbo.registry.Constants.DEFAULT_REGISTRY_RETRY_PERIOD;
 import static org.apache.dubbo.registry.Constants.REGISTRY_RETRY_PERIOD_KEY;
 
 /**
+ * 实现失败重试功能
  * FailbackRegistry. (SPI, Prototype, ThreadSafe)
  */
 public abstract class FailbackRegistry extends AbstractRegistry {
 
     /*  retry task map */
-
+    // 失败重试集合
     private final ConcurrentMap<URL, FailedRegisteredTask> failedRegistered = new ConcurrentHashMap<URL, FailedRegisteredTask>();
 
     private final ConcurrentMap<URL, FailedUnregisteredTask> failedUnregistered = new ConcurrentHashMap<URL, FailedUnregisteredTask>();
@@ -138,15 +139,22 @@ public abstract class FailbackRegistry extends AbstractRegistry {
         }
     }
 
+    /**
+     * 在 addFailedSubscribed 中将会新建定时任务，然后交由定时器执行。定时任务默认最大重试次数为 3 次，调用时间间隔默认为 5 s。
+     * @param url
+     * @param listener
+     */
     protected void addFailedSubscribed(URL url, NotifyListener listener) {
         Holder h = new Holder(url, listener);
         FailedSubscribedTask oldOne = failedSubscribed.get(h);
+        // 已经存在任务不用重复增加
         if (oldOne != null) {
             return;
         }
         FailedSubscribedTask newTask = new FailedSubscribedTask(url, this, listener);
         oldOne = failedSubscribed.putIfAbsent(h, newTask);
         if (oldOne == null) {
+            // 设置定时任务重试次数以及时间间隔
             // never has a retry task. then start a new task for retry.
             retryTimer.newTimeout(newTask, retryPeriod, TimeUnit.MILLISECONDS);
         }
@@ -326,16 +334,20 @@ public abstract class FailbackRegistry extends AbstractRegistry {
 
     @Override
     public void subscribe(URL url, NotifyListener listener) {
+        // 调用父类 订阅方法
         super.subscribe(url, listener);
+        // 首先移除失败的定时任务
         removeFailedSubscribed(url, listener);
         try {
             // Sending a subscription request to the server side
+            // 调用子类订阅模板方法
             doSubscribe(url, listener);
         } catch (Exception e) {
             Throwable t = e;
-
+            // 从缓存文件取出信息
             List<URL> urls = getCacheUrls(url);
             if (CollectionUtils.isNotEmpty(urls)) {
+                // 加载缓存中文件服务列表
                 notify(url, listener, urls);
                 logger.error("Failed to subscribe " + url + ", Using cached list: " + urls + " from cache file: " + getUrl().getParameter(FILE_KEY, System.getProperty("user.home") + "/dubbo-registry-" + url.getHost() + ".cache") + ", cause: " + t.getMessage(), t);
             } else {
@@ -354,6 +366,7 @@ public abstract class FailbackRegistry extends AbstractRegistry {
             }
 
             // Record a failed registration request to a failed list, retry regularly
+            // 加入失败重试集合
             addFailedSubscribed(url, listener);
         }
     }
@@ -441,7 +454,8 @@ public abstract class FailbackRegistry extends AbstractRegistry {
     }
 
     // ==== Template method ====
-
+    // 模板方法，交由子类实现
+    // 如果 doRegister 等模板方法发生异常，会将失败任务放入集合，然后定时再次调用模板方法。
     public abstract void doRegister(URL url);
 
     public abstract void doUnregister(URL url);

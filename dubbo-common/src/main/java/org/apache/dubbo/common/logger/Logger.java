@@ -14,6 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+// 对多款 Java 日志框架的集成
 package org.apache.dubbo.common.logger;
 
 /**

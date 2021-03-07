@@ -26,7 +26,12 @@ import java.util.List;
 /**
  * Protocol. (API/SPI, Singleton, ThreadSafe)
  */
-@SPI("dubbo")
+@SPI("dubbo")//某个接口被 @SPI注解修饰时，就表示该接口是扩展接口(yyl 即可以被扩展出多个实现类的接口）
+//@SPI 注解的 value 值指定了默认的扩展名称
+//，例如，在通过 Dubbo SPI 加载 Protocol 接口实现时，如果没有明确指定扩展名，
+// 则默认会将 @SPI 注解的 value 值作为扩展名，即加载 dubbo 这个扩展名对应的
+// org.apache.dubbo.rpc.protocol.dubbo.DubboProtocol 这个扩展实现类
+// yyl META-INF/services/ 中的文件是 KV 格式,其中 key 被称为扩展名（也就是 ExtensionName）
 public interface Protocol {
 
     /**
