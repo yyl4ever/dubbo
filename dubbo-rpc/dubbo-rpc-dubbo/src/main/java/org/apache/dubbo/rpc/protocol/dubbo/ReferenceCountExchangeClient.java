@@ -36,18 +36,22 @@ import static org.apache.dubbo.rpc.protocol.dubbo.Constants.LAZY_CONNECT_INITIAL
 
 /**
  * dubbo protocol support class.
+ * 在原始 ExchangeClient 对象基础上添加了引用计数的功能
  */
 @SuppressWarnings("deprecation")
 final class ReferenceCountExchangeClient implements ExchangeClient {
 
     private final URL url;
+    /**
+     * 记录该 Client 被应用的次数
+     */
     private final AtomicInteger referenceCount = new AtomicInteger(0);
 
     private ExchangeClient client;
 
     public ReferenceCountExchangeClient(ExchangeClient client) {
         this.client = client;
-        referenceCount.incrementAndGet();
+        referenceCount.incrementAndGet();//增加引用次数
         this.url = client.getUrl();
     }
 
@@ -154,17 +158,29 @@ final class ReferenceCountExchangeClient implements ExchangeClient {
         close(0);
     }
 
+    /**
+     * 对于同一个地址的共享连接，就可以满足两个基本需求：
+     *
+     * 当引用次数减到 0 的时候，ExchangeClient 连接关闭；
+     *
+     * 当引用次数未减到 0 的时候，底层的 ExchangeClient 不能关闭。
+     * @param timeout
+     */
     @Override
     public void close(int timeout) {
-        if (referenceCount.decrementAndGet() <= 0) {
+        // 引用次数减到0，关闭底层的ExchangeClient，
+        // 具体操作有：停掉心跳任务、重连任务以及关闭底层Channel，这些在前文介绍HeaderExchangeClient的时候已经详细分析过了，这里不再赘述
+        if (referenceCount.decrementAndGet() <= 0) {//减少引用次数。
             if (timeout == 0) {
                 client.close();
 
             } else {
                 client.close(timeout);
             }
-
-            replaceWithLazyClient();
+            /**
+             * 在关闭底层 ExchangeClient 对象之后，会立即创建一个 LazyConnectExchangeClient ，也有人称其为“幽灵连接”。
+             */
+            replaceWithLazyClient();        // 创建LazyConnectExchangeClient，并将client字段指向该对象
         }
     }
 
@@ -180,6 +196,7 @@ final class ReferenceCountExchangeClient implements ExchangeClient {
      * @return
      */
     private void replaceWithLazyClient() {
+        // 在原有的URL之上，添加一些LazyConnectExchangeClient特有的参数
         // this is a defensive operation to avoid client is closed by accident, the initial state of the client is false
         URL lazyUrl = URLBuilder.from(url)
                 .addParameter(LAZY_CONNECT_INITIAL_STATE_KEY, Boolean.TRUE)
@@ -193,7 +210,9 @@ final class ReferenceCountExchangeClient implements ExchangeClient {
         /**
          * the order of judgment in the if statement cannot be changed.
          */
+        // 如果当前client字段已经指向了LazyConnectExchangeClient，则不需要再次创建LazyConnectExchangeClient兜底了     
         if (!(client instanceof LazyConnectExchangeClient) || client.isClosed()) {
+            // ChannelHandler依旧使用原始ExchangeClient使用的Handler，即DubboProtocol中的requestHandler字段
             client = new LazyConnectExchangeClient(lazyUrl, client.getExchangeHandler());
         }
     }
@@ -207,7 +226,7 @@ final class ReferenceCountExchangeClient implements ExchangeClient {
      * The reference count of current ExchangeClient, connection will be closed if all invokers destroyed.
      */
     public void incrementAndGetCount() {
-        referenceCount.incrementAndGet();
+        referenceCount.incrementAndGet();//增加引用次数
     }
 }
 

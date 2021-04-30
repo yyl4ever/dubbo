@@ -28,6 +28,7 @@ import java.util.List;
 public interface NotifyListener {
 
     /**
+     * 用来接收该通知
      * Triggered when a service change notification is received.
      * <p>
      * Notify needs to support the contract: <br>

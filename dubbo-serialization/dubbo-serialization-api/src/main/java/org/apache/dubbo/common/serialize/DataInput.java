@@ -20,6 +20,7 @@ import java.io.IOException;
 
 /**
  * Basic data type input interface.
+ * 提供了反序列化各种类型的方法
  */
 public interface DataInput {
 

@@ -56,7 +56,8 @@ public interface RegistryService {
     void unregister(URL url);
 
     /**
-     * 订阅
+     * 订阅(push 模式)，订阅成功后，当订阅的数据发生变化，注册中心会主动通知 NotifyListener
+     *
      * Subscribe to eligible registered data and automatically push when the registered data is changed.
      * <p>
      * Subscribing need to support contracts:<br>
@@ -87,7 +88,7 @@ public interface RegistryService {
     void unsubscribe(URL url, NotifyListener listener);
 
     /**
-     * 查询
+     * 查询( pull 模式)
      * Query the registered data that matches the conditions. Corresponding to the push mode of the subscription, this is the pull mode and returns only one result.
      *
      * @param url Query condition, is not allowed to be empty, e.g. consumer://10.20.153.10/org.apache.dubbo.foo.BarService?version=1.0.0&application=kylin

@@ -22,6 +22,7 @@ import org.apache.dubbo.common.utils.NamedThreadFactory;
 /**
  * NamedInternalThreadFactory
  * This is a threadFactory which produce {@link InternalThread}
+ * 工厂类
  */
 public class NamedInternalThreadFactory extends NamedThreadFactory {
 
@@ -40,6 +41,7 @@ public class NamedInternalThreadFactory extends NamedThreadFactory {
     @Override
     public Thread newThread(Runnable runnable) {
         String name = mPrefix + mThreadNum.getAndIncrement();
+        // 创建的是 Dubbo 改写过的 THread
         InternalThread ret = new InternalThread(mGroup, runnable, name, 0);
         ret.setDaemon(mDaemon);
         return ret;

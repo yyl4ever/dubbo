@@ -97,6 +97,7 @@ public class RpcUtils {
      */
     public static void attachInvocationIdIfAsync(URL url, Invocation inv) {
         if (isAttachInvocationId(url, inv) && getInvocationId(inv) == null && inv instanceof RpcInvocation) {
+            // YYL 像这种 id，是怎么支持分布式的？
             ((RpcInvocation) inv).setAttachment(ID_KEY, String.valueOf(INVOKE_ID.getAndIncrement()));
         }
     }
@@ -193,11 +194,19 @@ public class RpcUtils {
         }
     }
 
+    /**
+     * oneway 指的是客户端发送消息后，不需要得到响应。
+     * 对于那些不关心服务端响应的请求，就比较适合使用 oneway 通信
+     * @param url
+     * @param inv
+     * @return
+     */
     public static boolean isOneway(URL url, Invocation inv) {
         boolean isOneway;
         if (Boolean.FALSE.toString().equals(inv.getAttachment(RETURN_KEY))) {
-            isOneway = true;
+            isOneway = true;// 首先关注的是Invocation中"return"这个附加属性
         } else {
+            // 之后关注URL中，调用方法对应的"return"配置
             isOneway = !url.getMethodParameter(getMethodName(inv), RETURN_KEY, true);
         }
         return isOneway;

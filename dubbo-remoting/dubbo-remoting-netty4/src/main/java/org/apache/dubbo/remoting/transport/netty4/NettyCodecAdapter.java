@@ -34,7 +34,7 @@ import java.util.List;
  * NettyCodecAdapter.
  */
 final public class NettyCodecAdapter {
-
+//内部类
     private final ChannelHandler encoder = new InternalEncoder();
 
     private final ChannelHandler decoder = new InternalDecoder();
@@ -59,6 +59,8 @@ final public class NettyCodecAdapter {
         return decoder;
     }
 
+    //InternalDecoder 和 InternalEncoder 会将真正的编解码功能委托给 NettyServer 关联
+    // 的这个 Codec2 (AbstractEndpoint 抽象类中的 codec 字段)对象去处理
     private class InternalEncoder extends MessageToByteEncoder {
 
         @Override
@@ -74,15 +76,19 @@ final public class NettyCodecAdapter {
 
         @Override
         protected void decode(ChannelHandlerContext ctx, ByteBuf input, List<Object> out) throws Exception {
-
+// 将ByteBuf封装成统一的ChannelBuffer
             ChannelBuffer message = new NettyBackedChannelBuffer(input);
-
+// 拿到关联的Channel
             NettyChannel channel = NettyChannel.getOrAddChannel(ctx.channel(), url, handler);
 
             // decode object.
-            do {
+            do {// 记录当前readerIndex的位置
                 int saveReaderIndex = message.readerIndex();
+                // 委托给Codec2进行解码
+
                 Object msg = codec.decode(channel, message);
+                // 当前接收到的数据不足一个消息的长度，会返回NEED_MORE_INPUT，
+                //  这里会重置readerIndex，继续等待接收更多的数据
                 if (msg == Codec2.DecodeResult.NEED_MORE_INPUT) {
                     message.readerIndex(saveReaderIndex);
                     break;

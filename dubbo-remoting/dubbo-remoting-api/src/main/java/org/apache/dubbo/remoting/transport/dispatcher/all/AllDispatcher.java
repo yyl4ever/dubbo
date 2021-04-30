@@ -22,6 +22,7 @@ import org.apache.dubbo.remoting.Dispatcher;
 
 /**
  * default thread pool configure
+ * AllDispatcher 创建的是 AllChannelHandler 对象，它会将所有网络事件以及消息交给关联的线程池进行处理。
  */
 public class AllDispatcher implements Dispatcher {
 

@@ -21,6 +21,7 @@ import java.util.Map;
 
 /**
  * Object output interface.
+ * 继承了 DataOutput 接口，并在其基础之上，添加了序列化对象的功能
  */
 public interface ObjectOutput extends DataOutput {
 

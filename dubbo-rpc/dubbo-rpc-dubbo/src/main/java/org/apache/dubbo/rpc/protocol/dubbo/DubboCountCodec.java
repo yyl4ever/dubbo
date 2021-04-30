@@ -32,7 +32,7 @@ import static org.apache.dubbo.rpc.Constants.INPUT_KEY;
 import static org.apache.dubbo.rpc.Constants.OUTPUT_KEY;
 
 public final class DubboCountCodec implements Codec2 {
-
+    // 编解码的能力都是 DubboCodec 提供, DubboCountCodec 只负责在解码过程中 ChannelBuffer 的 readerIndex 指针控制
     private DubboCodec codec = new DubboCodec();
 
     @Override
@@ -42,25 +42,29 @@ public final class DubboCountCodec implements Codec2 {
 
     @Override
     public Object decode(Channel channel, ChannelBuffer buffer) throws IOException {
-        int save = buffer.readerIndex();
+        int save = buffer.readerIndex();// 首先保存readerIndex指针位置
+        // 创建MultiMessage对象，其中可以存储多条消息
         MultiMessage result = MultiMessage.create();
         do {
+            // 通过DubboCodec提供的解码能力解码一条消息
             Object obj = codec.decode(channel, buffer);
+            // 如果可读字节数不足一条消息，则会重置readerIndex指针
             if (Codec2.DecodeResult.NEED_MORE_INPUT == obj) {
                 buffer.readerIndex(save);
                 break;
             } else {
-                result.addMessage(obj);
+                result.addMessage(obj);// 将成功解码的消息添加到MultiMessage中暂存
                 logMessageLength(obj, buffer.readerIndex() - save);
                 save = buffer.readerIndex();
             }
         } while (true);
-        if (result.isEmpty()) {
+        if (result.isEmpty()) {// 一条消息也未解码出来，则返回NEED_MORE_INPUT错误码
             return Codec2.DecodeResult.NEED_MORE_INPUT;
         }
-        if (result.size() == 1) {
+        if (result.size() == 1) {// 只解码出来一条消息，则直接返回该条消息
             return result.get(0);
         }
+        // 解码出多条消息的话，会将MultiMessage返回
         return result;
     }
 

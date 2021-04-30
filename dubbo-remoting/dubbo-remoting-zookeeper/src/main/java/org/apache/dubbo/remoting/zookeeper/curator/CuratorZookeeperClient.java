@@ -58,24 +58,32 @@ public class CuratorZookeeperClient extends AbstractZookeeperClient<CuratorZooke
     private final CuratorFramework client;
     private Map<String, TreeCache> treeCacheMap = new ConcurrentHashMap<>();
 
+    /**
+     * 初始化 Curator 客户端并阻塞等待连接成功
+     *
+     * @param url
+     */
     public CuratorZookeeperClient(URL url) {
         super(url);
         try {
             int timeout = url.getParameter(TIMEOUT_KEY, DEFAULT_CONNECTION_TIMEOUT_MS);
             int sessionExpireMs = url.getParameter(ZK_SESSION_EXPIRE_KEY, DEFAULT_SESSION_TIMEOUT_MS);
             CuratorFrameworkFactory.Builder builder = CuratorFrameworkFactory.builder()
-                    .connectString(url.getBackupAddress())
-                    .retryPolicy(new RetryNTimes(1, 1000))
-                    .connectionTimeoutMs(timeout)
-                    .sessionTimeoutMs(sessionExpireMs);
+                    .connectString(url.getBackupAddress())//zk地址(包括备用地址)
+                    .retryPolicy(new RetryNTimes(1, 1000))// 重试配置
+                    .connectionTimeoutMs(timeout)// 连接超时时长
+                    .sessionTimeoutMs(sessionExpireMs);// session过期时间
+            //处理身份验证的逻辑
             String authority = url.getAuthority();
             if (authority != null && authority.length() > 0) {
                 builder = builder.authorization("digest", authority.getBytes());
             }
             client = builder.build();
+            // 添加连接状态的监听
             client.getConnectionStateListenable().addListener(new CuratorConnectionStateListener(url));
             client.start();
             boolean connected = client.blockUntilConnected(timeout, TimeUnit.MILLISECONDS);
+            // 检测connected这个返回值，连接失败抛出异常
             if (!connected) {
                 throw new IllegalStateException("zookeeper not connected");
             }
@@ -225,19 +233,26 @@ public class CuratorZookeeperClient extends AbstractZookeeperClient<CuratorZooke
         this.addTargetDataListener(path, treeCacheListener, null);
     }
 
+    /**
+     * TreeCache 的创建、启动逻辑以及添加 CuratorWatcherImpl 监听的逻辑
+     * @param path
+     * @param treeCacheListener
+     * @param executor
+     */
     @Override
     protected void addTargetDataListener(String path, CuratorZookeeperClient.CuratorWatcherImpl treeCacheListener, Executor executor) {
         try {
+            // 创建TreeCache
             TreeCache treeCache = TreeCache.newBuilder(client, path).setCacheData(false).build();
-            treeCacheMap.putIfAbsent(path, treeCache);
+            treeCacheMap.putIfAbsent(path, treeCache);// 缓存TreeCache
 
-            if (executor == null) {
+            if (executor == null) {// 添加监听
                 treeCache.getListenable().addListener(treeCacheListener);
             } else {
                 treeCache.getListenable().addListener(treeCacheListener, executor);
             }
 
-            treeCache.start();
+            treeCache.start();// 启动
         } catch (Exception e) {
             throw new IllegalStateException("Add treeCache listener for path:" + path, e);
         }
@@ -257,7 +272,10 @@ public class CuratorZookeeperClient extends AbstractZookeeperClient<CuratorZooke
         listener.unwatch();
     }
 
-    static class CuratorWatcherImpl implements CuratorWatcher, TreeCacheListener {
+    /**
+     * CuratorWatcherImpl 也是 ChildListener 与 CuratorWatcher 的桥梁
+     */
+    static class CuratorWatcherImpl implements CuratorWatcher, TreeCacheListener {//它实现了 TreeCacheListener 接口，可以添加到 TreeCache 上监听自身节点以及子节点的变化
 
         private CuratorFramework client;
         private volatile ChildListener childListener;
@@ -294,6 +312,12 @@ public class CuratorZookeeperClient extends AbstractZookeeperClient<CuratorZooke
             }
         }
 
+        /**
+         * 当 TreeCache 关注的树型结构发生变化时，会将触发事件的路径、节点内容以及事件类型传递给关联的 DataListener 实例进行回调
+         * @param client
+         * @param event
+         * @throws Exception
+         */
         @Override
         public void childEvent(CuratorFramework client, TreeCacheEvent event) throws Exception {
             if (dataListener != null) {
@@ -333,6 +357,7 @@ public class CuratorZookeeperClient extends AbstractZookeeperClient<CuratorZooke
                         break;
 
                 }
+                // 回调DataListener，传递触发事件的path、节点内容以及事件类型
                 dataListener.dataChanged(path, content, eventType);
             }
         }

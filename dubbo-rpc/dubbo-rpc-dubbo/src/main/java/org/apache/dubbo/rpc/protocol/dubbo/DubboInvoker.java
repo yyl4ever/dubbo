@@ -82,10 +82,12 @@ public class DubboInvoker<T> extends AbstractInvoker<T> {
     @Override
     protected Result doInvoke(final Invocation invocation) throws Throwable {
         RpcInvocation inv = (RpcInvocation) invocation;
+        // 此次调用的方法名称
         final String methodName = RpcUtils.getMethodName(invocation);
+        // 向Invocation中添加附加信息，这里将URL的path和version添加到附加信息中
         inv.setAttachment(PATH_KEY, getUrl().getPath());
         inv.setAttachment(VERSION_KEY, version);
-
+        // 选择一个ExchangeClient实例
         ExchangeClient currentClient;
         if (clients.length == 1) {
             currentClient = clients[0];
@@ -95,6 +97,7 @@ public class DubboInvoker<T> extends AbstractInvoker<T> {
         try {
             boolean isOneway = RpcUtils.isOneway(getUrl(), invocation);
             Object countdown = RpcContext.getContext().get(TIME_COUNTDOWN_KEY);
+            // 根据调用的方法名称和配置计算此次调用的超时时间
             int timeout = DEFAULT_TIMEOUT;
             if (countdown == null) {
                 timeout = (int) RpcUtils.getTimeout(getUrl(), methodName, RpcContext.getContext(), DEFAULT_TIMEOUT);
@@ -106,16 +109,23 @@ public class DubboInvoker<T> extends AbstractInvoker<T> {
                 timeout = (int) timeoutCountDown.timeRemaining(TimeUnit.MILLISECONDS);
                 invocation.setObjectAttachment(TIMEOUT_KEY, timeout);// pass timeout to remote server
             }
-            if (isOneway) {
+            if (isOneway) {// 不需要关注返回值的请求
                 boolean isSent = getUrl().getMethodParameter(methodName, Constants.SENT_KEY, false);
                 currentClient.send(inv, isSent);
                 return AsyncRpcResult.newDefaultAsyncResult(invocation);
-            } else {
+            } else {// 需要关注返回值的请求
+                // 获取处理响应的线程池，对于同步请求，会使用ThreadlessExecutor，
+                // ThreadlessExecutor的原理前面已经分析过了，这里不再赘述；
+                // 对于异步请求，则会使用共享的线程池，ExecutorRepository 接口的相关设计和实现在前面已经详细分析过了，这里不再重复。
                 ExecutorService executor = getCallbackExecutor(getUrl(), inv);
+                // 使用上面选出的ExchangeClient执行request()方法，将请求发送出去
+                // (request() 方法会相应地创建 DefaultFuture 对象以及检测超时的定时任务，
+                // 而 send() 方法则不会创建这些东西，它是直接将 Invocation 包装成 oneway 类型的 Request 发送出去。)
                 CompletableFuture<AppResponse> appResponseFuture =
                         currentClient.request(inv, timeout, executor).thenApply(obj -> (AppResponse) obj);
                 // save for 2.6.x compatibility, for example, TraceFilter in Zipkin uses com.alibaba.xxx.FutureAdapter
                 FutureContext.getContext().setCompatibleFuture(appResponseFuture);
+                // 这里将AppResponse封装成AsyncRpcResult返回
                 AsyncRpcResult result = new AsyncRpcResult(appResponseFuture, inv);
                 result.setExecutor(executor);
                 return result;

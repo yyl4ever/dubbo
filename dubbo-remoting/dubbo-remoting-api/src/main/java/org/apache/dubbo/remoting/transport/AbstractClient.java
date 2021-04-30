@@ -41,25 +41,29 @@ import static org.apache.dubbo.common.constants.CommonConstants.THREADPOOL_KEY;
 
 /**
  * AbstractClient
+ * 对客户端的抽象
  */
 public abstract class AbstractClient extends AbstractEndpoint implements Client {
 
     protected static final String CLIENT_THREAD_POOL_NAME = "DubboClientHandler";
     private static final Logger logger = LoggerFactory.getLogger(AbstractClient.class);
+    // 在 Client 底层进行连接、断开、重连等操作时，需要获取该锁进行同步
     private final Lock connectLock = new ReentrantLock();
+    // 在发送数据之前，会检查 Client 底层的连接是否断开，如果断开了，则会根据 needReconnect 字段，决定是否重连
     private final boolean needReconnect;
+    // 当前 Client 关联的线程池
     protected volatile ExecutorService executor;
     private ExecutorRepository executorRepository = ExtensionLoader.getExtensionLoader(ExecutorRepository.class).getDefaultExtension();
 
     public AbstractClient(URL url, ChannelHandler handler) throws RemotingException {
-        super(url, handler);
-
+        super(url, handler);// 调用父类的构造方法
+        // 解析 URL 初始化 needReconnect 字段和 executor字段
         needReconnect = url.getParameter(Constants.SEND_RECONNECT_KEY, false);
 
-        initExecutor(url);
+        initExecutor(url);// 解析URL，初始化executor
 
         try {
-            doOpen();
+            doOpen();// 初始化底层的NIO库的相关组件
         } catch (Throwable t) {
             close();
             throw new RemotingException(url.toInetSocketAddress(), null,
@@ -67,6 +71,7 @@ public abstract class AbstractClient extends AbstractEndpoint implements Client 
                             + " connect to the server " + getRemoteAddress() + ", cause: " + t.getMessage(), t);
         }
         try {
+            // 创建底层连接
             // connect.
             connect();
             if (logger.isInfoEnabled()) {

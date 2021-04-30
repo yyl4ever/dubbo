@@ -38,6 +38,7 @@ import static org.apache.dubbo.common.constants.CommonConstants.TIMEOUT_KEY;
 
 /**
  * ExchangeReceiver
+ *  Channel 的装饰器，封装了一个 Channel 对象，其 send() 方法和 request() 方法的实现都是依赖底层修饰的这个 Channel 对象实现的。
  */
 final class HeaderExchangeChannel implements ExchangeChannel {
 
@@ -126,13 +127,26 @@ final class HeaderExchangeChannel implements ExchangeChannel {
             throw new RemotingException(this.getLocalAddress(), null, "Failed to send request " + request + ", cause: The channel " + this + " is closed!");
         }
         // create request.
-        Request req = new Request();
+        Request req = new Request();// 创建Request对象
         req.setVersion(Version.getProtocolVersion());
         req.setTwoWay(true);
         req.setData(request);
+        // 创建DefaultFuture
+        // io.netty.channel.Channel 的 send() 方法会返回一个 ChannelFuture 方法，表示此次发送操作是否完成，
+        // 而这里的 DefaultFuture 就表示此次请求-响应是否完成，也就是说，要收到响应为 Future 才算完成。
         DefaultFuture future = DefaultFuture.newFuture(channel, req, timeout, executor);
         try {
+            //将请求通过底层的 Dubbo Channel 发送出去
+            //发送过程中会触发沿途 ChannelHandler 的 sent() 方法，
+            // 其中的 HeaderExchangeHandler 会调用 DefaultFuture.sent() 方法更新 sent 字段，
+            // 记录请求发送的时间戳。后续如果响应超时，则会将该发送时间戳添加到提示信息中。
             channel.send(req);
+            // 过一段时间之后，Consumer 会收到对端返回的响应，在读取到完整响应之后，
+            // 会触发 Dubbo Channel 中各个 ChannelHandler 的 received() 方法，
+            // 其中就包括上一课时介绍的 WrappedChannelHandler。
+            // 例如，AllChannelHandler 子类会将后续 ChannelHandler.received() 方法的调用封装成任务提交到线程池中，
+            // 响应会提交到 DefaultFuture 关联的线程池中，如上一课时介绍的 ThreadlessExecutor，
+            // 然后由业务线程继续后续的 ChannelHandler 调用。
         } catch (RemotingException e) {
             future.cancel();
             throw e;
@@ -162,6 +176,15 @@ final class HeaderExchangeChannel implements ExchangeChannel {
         if (closed) {
             return;
         }
+        /**
+         * 首先会将自身的 closed 字段设置为 true，这样就不会继续发送请求。
+         * 如果当前 Channel 上还有请求未收到响应，会循环等待至收到响应，如果超时未收到响应，
+         * 会自己创建一个状态码将连接关闭的 Response 交给 DefaultFuture 处理，
+         * 与收到 disconnected 事件相同。
+         * 然后会关闭 Transport 层的 Channel，以 NettyChannel 为例，
+         * NettyChannel.close() 方法会先将自身的 closed 字段设置为 true，
+         * 清理 CHANNEL_MAP 缓存中的记录，以及 Channel 的附加属性，最后才是关闭 io.netty.channel.Channel。
+         */
         closed = true;
         if (timeout > 0) {
             long start = System.currentTimeMillis();

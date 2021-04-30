@@ -26,20 +26,29 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public final class InternalThreadLocalMap {
 
+    // 存储绑定到当前线程的数据
+    // 采用数组存储数据，直接通过 index 获取变量，相较于 Map 方式，计算 hash 值的性能更好
     private Object[] indexedVariables;
 
+    /**
+     * 当使用原生 Thread 的时候，会使用该 ThreadLocal 存储 InternalThreadLocalMap，这是一个降级策略。
+     */
     private static ThreadLocal<InternalThreadLocalMap> slowThreadLocalMap = new ThreadLocal<InternalThreadLocalMap>();
-
+    /**
+     * 自增索引，用于计算下次存储到 indexedVariables 数组中的位置，这是一个静态字段。
+     */
     private static final AtomicInteger NEXT_INDEX = new AtomicInteger();
-
+    /**
+     * 当一个与线程绑定的值被删除之后，会被设置为 UNSET 值。
+     */
     public static final Object UNSET = new Object();
 
     public static InternalThreadLocalMap getIfSet() {
         Thread thread = Thread.currentThread();
-        if (thread instanceof InternalThread) {
-            return ((InternalThread) thread).threadLocalMap();
+        if (thread instanceof InternalThread) {// 判断当前线程的类型
+            return ((InternalThread) thread).threadLocalMap();// 如果是InternalThread类型，直接获取InternalThreadLocalMap返回
         }
-        return slowThreadLocalMap.get();
+        return slowThreadLocalMap.get();// 原生Thread则需要通过ThreadLocal获取InternalThreadLocalMap
     }
 
     public static InternalThreadLocalMap get() {
@@ -66,7 +75,7 @@ public final class InternalThreadLocalMap {
     public static int nextVariableIndex() {
         int index = NEXT_INDEX.getAndIncrement();
         if (index < 0) {
-            NEXT_INDEX.decrementAndGet();
+            NEXT_INDEX.decrementAndGet();// yyl 越界了怎么还给它减少
             throw new IllegalStateException("Too many thread-local indexed variables");
         }
         return index;
@@ -90,11 +99,12 @@ public final class InternalThreadLocalMap {
      */
     public boolean setIndexedVariable(int index, Object value) {
         Object[] lookup = indexedVariables;
-        if (index < lookup.length) {
+        if (index < lookup.length) { // 将value存储到index指定的位置.yyl 万一 index 是个负值怎么办？
             Object oldValue = lookup[index];
             lookup[index] = value;
             return oldValue == UNSET;
         } else {
+            // 当index超过indexedVariables数组的长度时，需要对indexedVariables数组进行扩容
             expandIndexedVariableTableAndSet(index, value);
             return true;
         }

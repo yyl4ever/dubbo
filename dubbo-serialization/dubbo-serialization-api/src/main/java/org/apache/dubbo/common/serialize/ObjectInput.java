@@ -22,6 +22,7 @@ import java.util.Map;
 
 /**
  * Object input interface.
+ * 提供了反序列化 Java 对象的功能
  */
 public interface ObjectInput extends DataInput {
 

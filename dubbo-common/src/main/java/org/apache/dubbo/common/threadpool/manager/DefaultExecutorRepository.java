@@ -51,7 +51,7 @@ public class DefaultExecutorRepository implements ExecutorRepository {
     private ScheduledExecutorService serviceExporterExecutor;
 
     private ScheduledExecutorService reconnectScheduledExecutor;
-
+// 缓存已有的线程池,第一层 Key 值表示线程池属于 Provider 端还是 Consumer 端，第二层 Key 值表示线程池关联服务的端口
     private ConcurrentMap<String, ConcurrentMap<Integer, ExecutorService>> data = new ConcurrentHashMap<>();
 
     public DefaultExecutorRepository() {
@@ -66,17 +66,18 @@ public class DefaultExecutorRepository implements ExecutorRepository {
 
     /**
      * Get called when the server or client instance initiating.
-     *
+     * 根据 URL 参数创建相应的线程池并缓存在合适的位置
      * @param url
      * @return
      */
     public synchronized ExecutorService createExecutorIfAbsent(URL url) {
+        // 根据URL中的side参数值决定第一层key
         String componentKey = EXECUTOR_SERVICE_COMPONENT_KEY;
         if (CONSUMER_SIDE.equalsIgnoreCase(url.getParameter(SIDE_KEY))) {
             componentKey = CONSUMER_SIDE;
         }
         Map<Integer, ExecutorService> executors = data.computeIfAbsent(componentKey, k -> new ConcurrentHashMap<>());
-        Integer portKey = url.getPort();
+        Integer portKey = url.getPort();// 根据URL中的port值确定第二层key
         ExecutorService executor = executors.computeIfAbsent(portKey, k -> createExecutor(url));
         // If executor has been shut down, create a new one
         if (executor.isShutdown() || executor.isTerminated()) {
@@ -84,6 +85,8 @@ public class DefaultExecutorRepository implements ExecutorRepository {
             executor = createExecutor(url);
             executors.put(portKey, executor);
         }
+        // 如果缓存中相应的线程池已关闭，则同样需要调用createExecutor()方法
+        // 创建新的线程池，并替换掉缓存中已关闭的线程池
         return executor;
     }
 
@@ -160,6 +163,7 @@ public class DefaultExecutorRepository implements ExecutorRepository {
     }
 
     private ExecutorService createExecutor(URL url) {
+        // 通过 Dubbo SPI 查找 ThreadPool 接口的扩展实现，并调用其 getExecutor() 方法创建线程池。
         return (ExecutorService) ExtensionLoader.getExtensionLoader(ThreadPool.class).getAdaptiveExtension().getExecutor(url);
     }
 

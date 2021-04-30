@@ -50,13 +50,21 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public abstract class AbstractInvoker<T> implements Invoker<T> {
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
-
+    /**
+     * 业务接口类型，比如 DemoService
+     */
     private final Class<T> type;
-
+    /**
+     * 与当前 Invoker 关联的 URL 对象，其中包含了全部的配置信息
+     */
     private final URL url;
-
+    /**
+     * 当前 Invoker 关联的一些附加信息，这些附加信息可以来自关联的 URL。在 AbstractInvoker 的构造函数的某个重载中，会调用 convertAttachment() 方法，其中就会从关联的 URL 对象获取指定的 KV 值记录到 attachment 集合中。
+     */
     private final Map<String, Object> attachment;
-
+    /**
+     * available（volatile boolean类型）、destroyed（AtomicBoolean 类型）：这两个字段用来控制当前 Invoker 的状态。available 默认值为 true，destroyed 默认值为 false。在 destroy() 方法中会将 available 设置为 false，将 destroyed 字段设置为 true。
+     */
     private volatile boolean available = true;
 
     private AtomicBoolean destroyed = new AtomicBoolean(false);
@@ -138,12 +146,15 @@ public abstract class AbstractInvoker<T> implements Invoker<T> {
             logger.warn("Invoker for service " + this + " on consumer " + NetUtils.getLocalHost() + " is destroyed, "
                     + ", dubbo version is " + Version.getVersion() + ", this invoker should not be used any longer");
         }
+        // 强转
         RpcInvocation invocation = (RpcInvocation) inv;
         invocation.setInvoker(this);
         if (CollectionUtils.isNotEmptyMap(attachment)) {
+            // 添加附属信息
             invocation.addObjectAttachmentsIfAbsent(attachment);
         }
 
+        // 附加信息
         Map<String, Object> contextAttachments = RpcContext.getContext().getObjectAttachments();
         if (CollectionUtils.isNotEmptyMap(contextAttachments)) {
             /**
@@ -154,12 +165,14 @@ public abstract class AbstractInvoker<T> implements Invoker<T> {
              */
             invocation.addObjectAttachments(contextAttachments);
         }
-
+        // 设置此次调用的模式，异步还是同步
         invocation.setInvokeMode(RpcUtils.getInvokeMode(url, invocation));
+        // 若异步，则给本次调用添加一个唯一ID
         RpcUtils.attachInvocationIdIfAsync(getUrl(), invocation);
 
         AsyncRpcResult asyncResult;
         try {
+            // 子类实现 doInvoke，发起远程调用，有点模板方法的感觉
             asyncResult = (AsyncRpcResult) doInvoke(invocation);
         } catch (InvocationTargetException e) { // biz exception
             Throwable te = e.getTargetException();

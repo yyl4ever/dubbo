@@ -23,8 +23,9 @@ import org.apache.dubbo.remoting.transport.dispatcher.all.AllDispatcher;
 
 /**
  * ChannelHandlerWrapper (SPI, Singleton, ThreadSafe)
+ * 每个 WrappedChannelHandler 实现类的对象都由一个相应的 Dispatcher 实现类创建
  */
-@SPI(AllDispatcher.NAME)
+@SPI(AllDispatcher.NAME)// 默认扩展名是all
 public interface Dispatcher {
 
     /**
@@ -34,6 +35,7 @@ public interface Dispatcher {
      * @param url
      * @return channel handler
      */
+    // 通过URL中的参数可以指定扩展名，覆盖默认扩展名
     @Adaptive({Constants.DISPATCHER_KEY, "dispather", "channel.handler"})
     // The last two parameters are reserved for compatibility with the old configuration
     ChannelHandler dispatch(ChannelHandler handler, URL url);

@@ -30,6 +30,7 @@ public class ZookeeperRegistryFactory extends AbstractRegistryFactory {
     private ZookeeperTransporter zookeeperTransporter;
 
     /**
+     * todo 通过 SPI 或 Spring Ioc 的方式完成自动装载
      * Invisible injection of zookeeper client via IOC/SPI
      * @param zookeeperTransporter
      */
@@ -39,6 +40,7 @@ public class ZookeeperRegistryFactory extends AbstractRegistryFactory {
 
     @Override
     public Registry createRegistry(URL url) {
+        // 创建 ZookeeperRegistry 实例，后续将由该 ZookeeperRegistry 实例完成与 Zookeeper 的交互
         return new ZookeeperRegistry(url, zookeeperTransporter);
     }
 

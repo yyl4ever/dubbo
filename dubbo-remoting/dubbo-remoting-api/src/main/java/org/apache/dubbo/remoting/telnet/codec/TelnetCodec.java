@@ -38,6 +38,7 @@ import static org.apache.dubbo.remoting.Constants.DEFAULT_CHARSET;
 
 /**
  * TelnetCodec
+ * 继承了 TransportCodec 序列化和反序列化的基本能力，同时还提供了对 Telnet 命令处理的能力。
  */
 public class TelnetCodec extends TransportCodec {
 

@@ -38,11 +38,11 @@ public class Hessian2Serialization implements Serialization {
 
     @Override
     public byte getContentTypeId() {
-        return HESSIAN2_SERIALIZATION_ID;
+        return HESSIAN2_SERIALIZATION_ID;// hessian2的ContentType ID
     }
 
     @Override
-    public String getContentType() {
+    public String getContentType() {// hessian2的ContentType
         return "x-application/hessian2";
     }
 

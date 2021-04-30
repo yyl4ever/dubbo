@@ -36,7 +36,7 @@ public class Hessian2ObjectInput implements ObjectInput {
         return h2i;
     });
 
-    private final Hessian2Input mH2i;
+    private final Hessian2Input mH2i; //将所有反序列化的实现委托为 Hessian2Input
 
     public Hessian2ObjectInput(InputStream is) {
         mH2i = INPUT_TL.get();

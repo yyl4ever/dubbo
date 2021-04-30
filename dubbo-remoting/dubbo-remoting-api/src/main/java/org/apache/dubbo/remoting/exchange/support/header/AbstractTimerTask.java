@@ -29,11 +29,17 @@ import java.util.concurrent.TimeUnit;
  * AbstractTimerTask
  */
 public abstract class AbstractTimerTask implements TimerTask {
-
+    /**
+     * ChannelProvider 是 AbstractTimerTask 抽象类中定义的内部接口，定时任务会从该对象中获取 Channel
+     */
     private final ChannelProvider channelProvider;
-
+    /**
+     * 任务的过期时间
+     */
     private final Long tick;
-
+    /**
+     * 任务是否已取消
+     */
     protected volatile boolean cancel = false;
 
     AbstractTimerTask(ChannelProvider channelProvider, Long tick) {
@@ -77,18 +83,30 @@ public abstract class AbstractTimerTask implements TimerTask {
         timer.newTimeout(timeout.task(), tick, TimeUnit.MILLISECONDS);
     }
 
+    /**
+     * 首先会从 ChannelProvider 中获取此次任务相关的 Channel 集合（在 Client 端只有一个 Channel，在 Server 端有多个 Channel），
+     * 然后检查 Channel 的状态，针对未关闭的 Channel 执行 doTask() 方法处理，最后通过 reput() 方法将当前任务重新加入时间轮中，等待再次到期执行。
+     * @param timeout a handle which is associated with this task
+     * @throws Exception
+     */
     @Override
     public void run(Timeout timeout) throws Exception {
+        //     // 从ChannelProvider中获取任务要操作的Channel集合
         Collection<Channel> c = channelProvider.getChannels();
         for (Channel channel : c) {
-            if (channel.isClosed()) {
+            if (channel.isClosed()) {// 检测Channel状态
                 continue;
             }
-            doTask(channel);
+            doTask(channel);// 执行任务
         }
-        reput(timeout, tick);
+        reput(timeout, tick);// 将当前任务重新加入时间轮中，等待执行
     }
 
+    /**
+     * 留给子类实现的抽象方法，不同的定时任务执行不同的操作
+     * 例如，HeartbeatTimerTask.doTask() 方法中会读取最后一次读写时间，然后计算距离当前的时间，如果大于心跳间隔，就会发送一个心跳请求
+     * @param channel
+     */
     protected abstract void doTask(Channel channel);
 
     interface ChannelProvider {

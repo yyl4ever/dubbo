@@ -27,9 +27,10 @@ import java.util.stream.Stream;
  * @serial Don't change the class name and package name.
  * @see org.apache.dubbo.rpc.Invoker#invoke(Invocation)
  * @see org.apache.dubbo.rpc.RpcInvocation
+ * Invocation 抽象了一次 RPC 调用的目标服务和方法信息、相关参数信息、具体的参数值以及一些附加信息
  */
 public interface Invocation {
-
+    // 调用Service的唯一标识
     String getTargetServiceUniqueName();
 
     /**
@@ -37,14 +38,14 @@ public interface Invocation {
      *
      * @return method name.
      * @serial
-     */
+     */// 调用的方法名称
     String getMethodName();
 
 
     /**
      * get the interface name
      * @return
-     */
+     */// 调用的服务名称
     String getServiceName();
 
     /**
@@ -52,14 +53,14 @@ public interface Invocation {
      *
      * @return parameter types.
      * @serial
-     */
+     */ // 参数类型集合
     Class<?>[] getParameterTypes();
 
     /**
      * get parameter's signature, string representation of parameter types.
      *
      * @return parameter's signature
-     */
+     */// 参数签名集合
     default String[] getCompatibleParamSignatures() {
         return Stream.of(getParameterTypes())
                 .map(Class::getName)
@@ -71,7 +72,7 @@ public interface Invocation {
      *
      * @return arguments.
      * @serial
-     */
+     */// 此次调用具体的参数值
     Object[] getArguments();
 
     /**
@@ -128,12 +129,13 @@ public interface Invocation {
      *
      * @return invoker.
      * @transient
-     */
+     */// 此次调用关联的Invoker对象
     Invoker<?> getInvoker();
-
+    // Invoker对象可以设置一些KV属性，这些属性并不会传递给Provider
     Object put(Object key, Object value);
 
     Object get(Object key);
-
+    // Invocation可以携带一个KV信息作为附加信息，一并传递给Provider，
+    // 注意与 attribute 的区分
     Map<Object, Object> getAttributes();
 }

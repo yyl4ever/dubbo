@@ -21,8 +21,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 
 public class ChannelBufferOutputStream extends OutputStream {
-
-    private final ChannelBuffer buffer;
+    private final ChannelBuffer buffer;//会向底层的 ChannelBuffer 写入数据
     private final int startIndex;
 
     public ChannelBufferOutputStream(ChannelBuffer buffer) {

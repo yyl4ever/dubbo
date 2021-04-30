@@ -203,6 +203,7 @@ import java.nio.ByteBuffer;
  */
 public interface ChannelBuffer extends Comparable<ChannelBuffer> {
 
+    // 获取 ChannelBuffer 容量
     /**
      * Returns the number of bytes (octets) this buffer can contain.
      */
@@ -277,6 +278,7 @@ public interface ChannelBuffer extends Comparable<ChannelBuffer> {
     @Override
     boolean equals(Object o);
 
+    // 该方法返回创建 ChannelBuffer 的工厂对象，ChannelBufferFactory 中定义了多个 getBuffer() 方法重载来创建 ChannelBuffer
     /**
      * Returns the factory which creates a {@link ChannelBuffer} whose type and
      * default {@link java.nio.ByteOrder} are same with this buffer.
@@ -294,6 +296,7 @@ public interface ChannelBuffer extends Comparable<ChannelBuffer> {
      */
     byte getByte(int index);
 
+    //从参数指定的位置读、写当前 ChannelBuffer，不会修改 readerIndex 和 writerIndex 指针的位置。
     /**
      * Transfers this buffer's data to the specified destination starting at the
      * specified absolute {@code index}. This method does not modify {@code
@@ -411,6 +414,8 @@ public interface ChannelBuffer extends Comparable<ChannelBuffer> {
      */
     boolean isDirect();
 
+    // 记录当前 readerIndex 指针和 writerIndex 指针的位置，一般会和 resetReaderIndex()、resetWriterIndex() 方法配套使用。
+    // resetReaderIndex() 方法会将 readerIndex 指针重置到 markReaderIndex() 方法标记的位置，resetwriterIndex() 方法同理。
     /**
      * Marks the current {@code readerIndex} in this buffer.  You can reposition
      * the current {@code readerIndex} to the marked {@code readerIndex} by
@@ -448,6 +453,7 @@ public interface ChannelBuffer extends Comparable<ChannelBuffer> {
      */
     byte readByte();
 
+    // 读、写当前 ChannelBuffer，但是 readBytes() 方法会从 readerIndex 指针开始读取数据，并移动 readerIndex 指针；writeBytes() 方法会从 writerIndex 指针位置开始写入数据，并移动 writerIndex 指针
     /**
      * Transfers this buffer's data to the specified destination starting at the
      * current {@code readerIndex} and increases the {@code readerIndex} by the

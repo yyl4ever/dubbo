@@ -41,18 +41,28 @@ import static org.apache.dubbo.common.constants.CommonConstants.VERSION_KEY;
 
 /**
  * abstract ProtocolSupport.
+ * 提供了公共能力以及公共字段
  */
 public abstract class AbstractProtocol implements Protocol {
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
 
+    /**
+     * 用于存储出去的服务集合
+     * Key ： ProtocolUtils.serviceKey() 方法创建
+     */
     protected final Map<String, Exporter<?>> exporterMap = new ConcurrentHashMap<String, Exporter<?>>();
 
     /**
      * <host:port, ProtocolServer>
+     * 记录了全部的 ProtocolServer 实例，其中的 Key 是 host 和 port 组成的字符串，
+     * Value 是监听该地址的 ProtocolServer。ProtocolServer 就是对 RemotingServer 的一层简单封装，表示一个服务端。
      */
     protected final Map<String, ProtocolServer> serverMap = new ConcurrentHashMap<>();
 
+    /**
+     * 服务引用的集合
+     */
     //TODO SoftReference
     protected final Set<Invoker<?>> invokers = new ConcurrentHashSet<Invoker<?>>();
 
@@ -71,19 +81,20 @@ public abstract class AbstractProtocol implements Protocol {
 
     @Override
     public void destroy() {
-        for (Invoker<?> invoker : invokers) {
+        for (Invoker<?> invoker : invokers) {//遍历 Invokers 集合
             if (invoker != null) {
                 invokers.remove(invoker);
                 try {
                     if (logger.isInfoEnabled()) {
                         logger.info("Destroy reference: " + invoker.getUrl());
                     }
-                    invoker.destroy();
+                    invoker.destroy();// 关闭全部的服务引用
                 } catch (Throwable t) {
                     logger.warn(t.getMessage(), t);
                 }
             }
         }
+        // 遍历全部的 exporterMap 集合，销毁发布出去的服务
         for (String key : new ArrayList<String>(exporterMap.keySet())) {
             Exporter<?> exporter = exporterMap.remove(key);
             if (exporter != null) {
@@ -91,7 +102,7 @@ public abstract class AbstractProtocol implements Protocol {
                     if (logger.isInfoEnabled()) {
                         logger.info("Unexport service: " + exporter.getInvoker().getUrl());
                     }
-                    exporter.unexport();
+                    exporter.unexport();// 关闭暴露出去的服务
                 } catch (Throwable t) {
                     logger.warn(t.getMessage(), t);
                 }
@@ -104,6 +115,15 @@ public abstract class AbstractProtocol implements Protocol {
         return new AsyncToSyncInvoker<>(protocolBindingRefer(type, url));
     }
 
+    /**
+     * 委托给子类实现
+     *
+     * @param type
+     * @param url
+     * @param <T>
+     * @return
+     * @throws RpcException
+     */
     protected abstract <T> Invoker<T> protocolBindingRefer(Class<T> type, URL url) throws RpcException;
 
     public Map<String, Exporter<?>> getExporterMap() {

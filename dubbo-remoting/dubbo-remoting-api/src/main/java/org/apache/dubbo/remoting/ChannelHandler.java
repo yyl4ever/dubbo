@@ -24,10 +24,17 @@ import org.apache.dubbo.common.extension.SPI;
  *
  * @see org.apache.dubbo.remoting.Transporter#bind(org.apache.dubbo.common.URL, ChannelHandler)
  * @see org.apache.dubbo.remoting.Transporter#connect(org.apache.dubbo.common.URL, ChannelHandler)
+ *
+ * 注册在 Channel 上的消息处理器
+ *
+ * 在 ChannelHandler 中可以处理 Channel 的连接建立以及连接断开事件，还可以处理读取到的数据、发送的数据以及捕获到的异常。
+ *
+ * 无论是 Client 还是 RemotingServer，都会使用 ChannelHandler 处理 Channel 中传输的数据，其中负责编解码的 ChannelHandler 被抽象出为 Codec2 接口。
  */
-@SPI
+@SPI //被 @SPI 注解修饰，表示该接口是一个扩展点
 public interface ChannelHandler {
 
+    //从这些方法的命名可以看到，它们都是动词的过去式，说明相应事件已经发生过了。
     /**
      * on channel connected.
      *

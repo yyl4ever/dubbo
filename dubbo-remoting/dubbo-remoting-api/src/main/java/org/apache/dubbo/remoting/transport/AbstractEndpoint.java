@@ -44,28 +44,36 @@ public abstract class AbstractEndpoint extends AbstractPeer implements Resetable
     private int connectTimeout;
 
     public AbstractEndpoint(URL url, ChannelHandler handler) {
-        super(url, handler);
-        this.codec = getChannelCodec(url);
-        this.timeout = url.getPositiveParameter(TIMEOUT_KEY, DEFAULT_TIMEOUT);
+        super(url, handler);// 调用父类AbstractPeer的构造方法
+        this.codec = getChannelCodec(url);// 根据URL中的codec参数值，确定此处具体的Codec2实现类
+        this.timeout = url.getPositiveParameter(TIMEOUT_KEY, DEFAULT_TIMEOUT);// 根据URL中的timeout参数确定timeout字段的值，默认1000
+        // 根据URL中的connect.timeout参数确定connectTimeout字段的值，默认3000
         this.connectTimeout = url.getPositiveParameter(Constants.CONNECT_TIMEOUT_KEY, Constants.DEFAULT_CONNECT_TIMEOUT);
     }
 
+    //Codec2 接口是一个 SPI 扩展点, 基于 Dubbo SPI 选择其扩展实现
     protected static Codec2 getChannelCodec(URL url) {
+        // 根据URL的codec参数获取扩展名
         String codecName = url.getParameter(Constants.CODEC_KEY, "telnet");
         if (ExtensionLoader.getExtensionLoader(Codec2.class).hasExtension(codecName)) {
+            // 通过ExtensionLoader加载并实例化Codec2的具体扩展实现
             return ExtensionLoader.getExtensionLoader(Codec2.class).getExtension(codecName);
         } else {
+            // Codec2接口不存在相应的扩展名，就尝试从Codec这个老接口的扩展名中查找，目前Codec接口已经废弃了
             return new CodecAdapter(ExtensionLoader.getExtensionLoader(Codec.class)
                     .getExtension(codecName));
         }
     }
 
+    //根据传入的 URL 参数重置 AbstractEndpoint 的三个字段
     @Override
     public void reset(URL url) {
+        // 检测当前AbstractEndpoint是否已经关闭
         if (isClosed()) {
             throw new IllegalStateException("Failed to reset parameters "
                     + url + ", cause: Channel closed. channel: " + getLocalAddress());
         }
+        // 重置timeout、connectTimeout两个字段
         try {
             if (url.hasParameter(TIMEOUT_KEY)) {
                 int t = url.getParameter(TIMEOUT_KEY, 0);

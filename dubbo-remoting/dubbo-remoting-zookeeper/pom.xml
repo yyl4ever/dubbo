@@ -22,6 +22,7 @@
         <version>${revision}</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
+    <!--dubbo-remoting-zookeeper 模块是在 Apache Curator 的基础上封装了一套 Zookeeper 客户端，将与 Zookeeper 的交互融合到 Dubbo 的体系之中-->
     <artifactId>dubbo-remoting-zookeeper</artifactId>
     <packaging>jar</packaging>
     <name>${project.artifactId}</name>

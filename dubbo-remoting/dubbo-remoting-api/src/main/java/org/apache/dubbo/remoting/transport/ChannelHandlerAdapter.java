@@ -22,6 +22,8 @@ import org.apache.dubbo.remoting.RemotingException;
 
 /**
  * ChannelHandlerAdapter.
+ * ChannelHandler 的一个空实现
+ * TelnetHandlerAdapter 继承了它并实现了 TelnetHandler 接口。
  */
 public class ChannelHandlerAdapter implements ChannelHandler {
 

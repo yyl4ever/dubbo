@@ -35,6 +35,9 @@ public final class FailedNotifiedTask extends AbstractRetryTask {
 
     private final NotifyListener listener;
 
+    /**
+     * 记录当前任务一次运行需要通知的 URL，每执行完一次任务，就会清空该集合
+     */
     private final List<URL> urls = new CopyOnWriteArrayList<>();
 
     public FailedNotifiedTask(URL url, NotifyListener listener) {
@@ -62,6 +65,11 @@ public final class FailedNotifiedTask extends AbstractRetryTask {
             listener.notify(urls);
             urls.clear();
         }
-        reput(timeout, retryPeriod);
+        reput(timeout, retryPeriod);// 将任务重新添加到时间轮中等待执行
+        /**
+         * 从上面的代码可以看出，FailedNotifiedTask 重试任务一旦被添加，就会一直运行下去，
+         * 但真的是这样吗？在 FailbackRegistry 的 subscribe()、unsubscribe() 方法中，
+         * 可以看到 removeFailedNotified() 方法的调用，这里就是清理 FailedNotifiedTask 任务的地方。
+         */
     }
 }

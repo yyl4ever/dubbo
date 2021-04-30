@@ -28,8 +28,9 @@ import org.apache.dubbo.remoting.exchange.support.header.HeaderExchanger;
  * <p>
  * <a href="http://en.wikipedia.org/wiki/Message_Exchange_Pattern">Message Exchange Pattern</a>
  * <a href="http://en.wikipedia.org/wiki/Request-response">Request-Response</a>
+ * Dubbo 只为 Exchanger 接口提供了 HeaderExchanger 这一个实现，其中 connect() 方法创建的是 HeaderExchangeClient 对象，bind() 方法创建的是 HeaderExchangeServer 对象
  */
-@SPI(HeaderExchanger.NAME)
+@SPI(HeaderExchanger.NAME)//默认扩展名为“header”，对应的是 HeaderExchanger 这个实现
 public interface Exchanger {
 
     /**
@@ -39,7 +40,7 @@ public interface Exchanger {
      * @param handler
      * @return message server
      */
-    @Adaptive({Constants.EXCHANGER_KEY})
+    @Adaptive({Constants.EXCHANGER_KEY})//bind() 方法和 connect() 方法也同样是被 @Adaptive 注解修饰，可以通过 URL 参数中的 exchanger 参数值指定扩展名称来覆盖默认值。
     ExchangeServer bind(URL url, ExchangeHandler handler) throws RemotingException;
 
     /**

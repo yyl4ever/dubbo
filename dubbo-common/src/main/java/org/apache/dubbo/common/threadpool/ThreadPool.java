@@ -38,6 +38,6 @@ public interface ThreadPool {
      * @return thread pool
      */
     @Adaptive({THREADPOOL_KEY})
-    Executor getExecutor(URL url);
+    Executor getExecutor(URL url);// 不同实现会根据 URL 参数创建不同特性的线程池，
 
 }

@@ -65,7 +65,7 @@ public class AbortPolicyWithReport extends ThreadPoolExecutor.AbortPolicy {
         this.threadName = threadName;
         this.url = url;
     }
-
+//覆盖的 rejectedExecution 方法中会输出包含线程池相关信息的 WARN 级别日志，然后进行 dumpJStack() 方法，最后才会抛出RejectedExecutionException 异常
     @Override
     public void rejectedExecution(Runnable r, ThreadPoolExecutor e) {
         String msg = String.format("Thread pool is EXHAUSTED!" +

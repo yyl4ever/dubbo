@@ -31,6 +31,9 @@ import org.apache.dubbo.remoting.transport.ChannelHandlerDelegate;
 
 import java.util.concurrent.ExecutorService;
 
+/**
+ * 子类主要是决定了 Dubbo 以何种线程模型处理收到的事件和消息，就是所谓的“消息派发机制”,与前面介绍的 ThreadPool 有紧密的联系。
+ */
 public class WrappedChannelHandler implements ChannelHandlerDelegate {
 
     protected static final Logger logger = LoggerFactory.getLogger(WrappedChannelHandler.class);
@@ -53,6 +56,7 @@ public class WrappedChannelHandler implements ChannelHandlerDelegate {
         handler.connected(channel);
     }
 
+    //处理连接断开事件
     @Override
     public void disconnected(Channel channel) throws RemotingException {
         handler.disconnected(channel);
@@ -63,11 +67,21 @@ public class WrappedChannelHandler implements ChannelHandlerDelegate {
         handler.sent(channel, message);
     }
 
+    /**
+     *
+     *
+     *
+     *
+     *
+     * @param channel channel.
+     * @param message message.
+     * @throws RemotingException
+     */
     @Override
     public void received(Channel channel, Object message) throws RemotingException {
         handler.received(channel, message);
     }
-
+//处理异常事件
     @Override
     public void caught(Channel channel, Throwable exception) throws RemotingException {
         handler.caught(channel, exception);
@@ -103,6 +117,9 @@ public class WrappedChannelHandler implements ChannelHandlerDelegate {
      * 1. Use ThreadlessExecutor, aka., delegate callback directly to the thread initiating the call.
      * 2. Use shared executor to execute the callback.
      *
+     * getPreferredExecutorService 对响应做了特殊处理：如果请求在发送的时候指定了关联的线程池，
+     * 在收到对应的响应消息的时候，会优先根据请求的 ID 查找请求关联的线程池处理响应。
+     *
      * @param msg
      * @return
      */
@@ -113,14 +130,14 @@ public class WrappedChannelHandler implements ChannelHandlerDelegate {
             // a typical scenario is the response returned after timeout, the timeout response may has completed the future
             if (responseFuture == null) {
                 return getSharedExecutorService();
-            } else {
+            } else {// 如果请求关联了线程池，则会获取相关的线程来处理响应
                 ExecutorService executor = responseFuture.getExecutor();
                 if (executor == null || executor.isShutdown()) {
                     executor = getSharedExecutorService();
                 }
                 return executor;
             }
-        } else {
+        } else {// 如果是请求消息，则直接使用公共的线程池处理
             return getSharedExecutorService();
         }
     }
@@ -142,6 +159,7 @@ public class WrappedChannelHandler implements ChannelHandlerDelegate {
 
     @Deprecated
     public ExecutorService getExecutorService() {
+        // 按照当前端点（Server/Client）的 URL 从 ExecutorRepository 中获取相应的公共线程池
         return getSharedExecutorService();
     }
 

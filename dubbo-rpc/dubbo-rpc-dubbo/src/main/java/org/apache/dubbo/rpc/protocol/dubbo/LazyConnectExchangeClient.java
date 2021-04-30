@@ -40,6 +40,7 @@ import static org.apache.dubbo.rpc.protocol.dubbo.Constants.DEFAULT_LAZY_CONNECT
 
 /**
  * dubbo protocol support class.
+ *  ExchangeClient 的装饰器，它会在原有 ExchangeClient 对象的基础上添加懒加载的功能。
  */
 @SuppressWarnings("deprecation")
 final class LazyConnectExchangeClient implements ExchangeClient {
@@ -61,6 +62,11 @@ final class LazyConnectExchangeClient implements ExchangeClient {
     private volatile ExchangeClient client;
     private AtomicLong warningcount = new AtomicLong(0);
 
+    /**
+     * 在构造方法中不会创建底层持有连接的 Client，而是在需要发送请求的时候，才会调用 initClient() 方法进行 Client 的创建，
+     * @param url
+     * @param requestHandler
+     */
     public LazyConnectExchangeClient(URL url, ExchangeHandler requestHandler) {
         // lazy connect, need set send.reconnect = true, to avoid channel bad status.
         this.url = url.addParameter(SEND_RECONNECT_KEY, Boolean.TRUE.toString());
@@ -70,7 +76,7 @@ final class LazyConnectExchangeClient implements ExchangeClient {
     }
 
     private void initClient() throws RemotingException {
-        if (client != null) {
+        if (client != null) {// 底层Client已经初始化过了，这里不再初始化
             return;
         }
         if (logger.isInfoEnabled()) {
@@ -78,9 +84,10 @@ final class LazyConnectExchangeClient implements ExchangeClient {
         }
         connectLock.lock();
         try {
-            if (client != null) {
+            if (client != null) {// double check
                 return;
             }
+            // 通过Exchangers门面类，创建ExchangeClient对象
             this.client = Exchangers.connect(url, requestHandler);
         } finally {
             connectLock.unlock();
@@ -131,6 +138,8 @@ final class LazyConnectExchangeClient implements ExchangeClient {
 
     /**
      * If {@link #REQUEST_WITH_WARNING_KEY} is configured, then warn once every 5000 invocations.
+     * 根据当前 URL 携带的参数决定是否打印 WARN 级别日志。为了防止瞬间打印大量日志的情况发生，
+     * 这里有打印的频率限制，默认每发送 5000 次请求打印 1 条日志。
      */
     private void warning() {
         if (requestWithWarning) {

@@ -27,6 +27,10 @@ import java.util.concurrent.TimeUnit;
  * or the currentPoolThreadSize more than executor's maximumPoolSize.
  * That can make the executor create new worker
  * when the task num is bigger than corePoolSize but less than maximumPoolSize.
+ *
+ * EagerThreadPoolExecutor 没有看到优先创建线程执行任务的逻辑啊。
+ * 其实重点在关联的 TaskQueue 实现中，它覆盖了 LinkedBlockingQueue.offer() 方法，
+ * 会判断线程池的 submittedTaskCount 值是否已经达到最大线程数，如果未超过，则会返回 false，迫使线程池创建新线程来执行任务。
  */
 public class TaskQueue<R extends Runnable> extends LinkedBlockingQueue<Runnable> {
 
@@ -47,18 +51,20 @@ public class TaskQueue<R extends Runnable> extends LinkedBlockingQueue<Runnable>
         if (executor == null) {
             throw new RejectedExecutionException("The task queue does not have executor!");
         }
-
+ // 获取当前线程池中的活跃线程数
         int currentPoolThreadSize = executor.getPoolSize();
+        // 当前有线程空闲，直接将任务提交到队列中，空闲线程会直接从中获取任务执行
         // have free worker. put task into queue to let the worker deal with task.
         if (executor.getSubmittedTaskCount() < currentPoolThreadSize) {
             return super.offer(runnable);
         }
-
+// 当前没有空闲线程，但是还可以创建新线程，则返回false，迫使线程池创建
+        // 新线程来执行任务 -- todo 为什么说返回 false 就能迫使其创建新线程
         // return false to let executor create new worker.
         if (currentPoolThreadSize < executor.getMaximumPoolSize()) {
             return false;
         }
-
+//// 当前线程数已经达到上限，只能放到队列中缓存了
         // currentPoolThreadSize >= max
         return super.offer(runnable);
     }

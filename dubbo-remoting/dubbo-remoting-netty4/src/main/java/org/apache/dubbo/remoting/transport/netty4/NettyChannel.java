@@ -44,15 +44,22 @@ final class NettyChannel extends AbstractChannel {
     private static final Logger logger = LoggerFactory.getLogger(NettyChannel.class);
     /**
      * the cache for netty channel and dubbo channel
+     * 缓存当前 JVM 中 Netty 框架 Channel 与 Dubbo Channel 之间的映射关系
      */
     private static final ConcurrentMap<Channel, NettyChannel> CHANNEL_MAP = new ConcurrentHashMap<Channel, NettyChannel>();
     /**
      * netty channel
+     * Netty 框架中的 Channel，与当前的 Dubbo Channel 对象一一对应
      */
     private final Channel channel;
-
+    /**
+     * 当前 Channel 中附加属性，都会记录到该 Map 中。
+     */
     private final Map<String, Object> attributes = new ConcurrentHashMap<String, Object>();
 
+    /**
+     * 用于标识当前 Channel 是否可用
+     */
     private final AtomicBoolean active = new AtomicBoolean(false);
 
     /**
@@ -150,17 +157,20 @@ final class NettyChannel extends AbstractChannel {
      * @param message message that need send.
      * @param sent    whether to ack async-sent
      * @throws RemotingException throw RemotingException if wait until timeout or any exception thrown by method body that surrounded by try-catch.
+     * 通过底层关联的 Netty 框架 Channel，将数据发送到对端。通过第二个参数指定是否等待发送操作结束
      */
     @Override
     public void send(Object message, boolean sent) throws RemotingException {
         // whether the channel is closed
+        // 调用AbstractChannel的send()方法检测连接是否可用
         super.send(message, sent);
 
         boolean success = true;
         int timeout = 0;
         try {
+            // 依赖Netty框架的Channel发送数据
             ChannelFuture future = channel.writeAndFlush(message);
-            if (sent) {
+            if (sent) {// 等待发送结束，有超时时间
                 // wait timeout ms
                 timeout = getUrl().getPositiveParameter(TIMEOUT_KEY, DEFAULT_TIMEOUT);
                 success = future.await(timeout);
@@ -170,6 +180,8 @@ final class NettyChannel extends AbstractChannel {
                 throw cause;
             }
         } catch (Throwable e) {
+            // 出现异常会调用removeChannelIfDisconnected()方法，在底层连接断开时，
+            // 会清理CHANNEL_MAP缓存
             removeChannelIfDisconnected(channel);
             throw new RemotingException(this, "Failed to send message " + PayloadDropper.getRequestWithoutData(message) + " to " + getRemoteAddress() + ", cause: " + e.getMessage(), e);
         }

@@ -21,6 +21,10 @@ import org.apache.dubbo.remoting.Channel;
 import org.apache.dubbo.remoting.ChannelHandler;
 import org.apache.dubbo.remoting.RemotingException;
 
+/**
+ *  AbstractChannelHandlerDelegate 下的三个实现，
+ *  其实都是在原有 ChannelHandler 的基础上添加了一些增强功能，这是典型的装饰器模式的应用
+ */
 public abstract class AbstractChannelHandlerDelegate implements ChannelHandlerDelegate {
 
     protected ChannelHandler handler;

@@ -20,6 +20,7 @@ import java.io.IOException;
 
 /**
  * Basic data type output interface.
+ * 定义了序列化 Java 中各种数据类型的相应方法
  */
 public interface DataOutput {
 

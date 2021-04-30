@@ -28,11 +28,13 @@ import java.util.concurrent.CopyOnWriteArraySet;
 
 /**
  * ChannelListenerDispatcher
+ * 负责将多个 ChannelHandler 对象聚合成一个 ChannelHandler 对象
  */
 public class ChannelHandlerDispatcher implements ChannelHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(ChannelHandlerDispatcher.class);
 
+    // 它所有的 ChannelHandler 接口实现都会调用其中每个 ChannelHandler 元素的相应方法
     private final Collection<ChannelHandler> channelHandlers = new CopyOnWriteArraySet<ChannelHandler>();
 
     public ChannelHandlerDispatcher() {
@@ -51,7 +53,7 @@ public class ChannelHandlerDispatcher implements ChannelHandler {
     public Collection<ChannelHandler> getChannelHandlers() {
         return channelHandlers;
     }
-
+    // 增删 ChannelHandler 集合
     public ChannelHandlerDispatcher addChannelHandler(ChannelHandler handler) {
         this.channelHandlers.add(handler);
         return this;

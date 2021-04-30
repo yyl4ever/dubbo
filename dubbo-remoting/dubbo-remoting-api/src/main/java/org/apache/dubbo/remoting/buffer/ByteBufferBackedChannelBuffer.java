@@ -21,7 +21,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-
+//基于 Java NIO 中 ByteBuffer 的 ChannelBuffer 实现
 public class ByteBufferBackedChannelBuffer extends AbstractChannelBuffer {
 
     private final ByteBuffer buffer;
@@ -87,11 +87,12 @@ public class ByteBufferBackedChannelBuffer extends AbstractChannelBuffer {
     @Override
     public void getBytes(int index, byte[] dst, int dstIndex, int length) {
         ByteBuffer data = buffer.duplicate();
-        try {
+        try {// 移动ByteBuffer中的指针
             data.limit(index + length).position(index);
         } catch (IllegalArgumentException e) {
             throw new IndexOutOfBoundsException();
         }
+        // 通过ByteBuffer的get()方法实现读取
         data.get(dst, dstIndex, length);
     }
 
@@ -159,7 +160,9 @@ public class ByteBufferBackedChannelBuffer extends AbstractChannelBuffer {
     @Override
     public void setBytes(int index, byte[] src, int srcIndex, int length) {
         ByteBuffer data = buffer.duplicate();
+        // 移动ByteBuffer中的指针
         data.limit(index + length).position(index);
+        // 将数据写入底层的ByteBuffer中
         data.put(src, srcIndex, length);
     }
 

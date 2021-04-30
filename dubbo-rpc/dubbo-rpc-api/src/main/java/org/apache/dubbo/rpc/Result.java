@@ -43,6 +43,8 @@ import java.util.function.Function;
  * @serial Don't change the class name and package name.
  * @see org.apache.dubbo.rpc.Invoker#invoke(Invocation)
  * @see AppResponse
+ * Result 抽象了一次调用的返回值，其中包含了被调用方返回值（或是异常）以及附加信息，
+ * 我们也可以添加回调方法，在 RPC 调用方法结束时会触发这些回调。
  */
 public interface Result extends Serializable {
 
@@ -50,7 +52,7 @@ public interface Result extends Serializable {
      * Get invoke result.
      *
      * @return result. if no result return null.
-     */
+     */// 获取/设置此次调用的返回值
     Object getValue();
 
     void setValue(Object value);
@@ -59,7 +61,7 @@ public interface Result extends Serializable {
      * Get exception.
      *
      * @return exception. if no exception return null.
-     */
+     */ // 如果此次调用发生异常，则可以通过下面三个方法获取
     Throwable getException();
 
     void setException(Throwable t);
@@ -84,14 +86,15 @@ public interface Result extends Serializable {
      *
      * @return result.
      * @throws if has exception throw it.
-     */
+     */// recreate()方法是一个复合操作，如果此次调用发生异常，则直接抛出异常，
+    // 如果没有异常，则返回结果
     Object recreate() throws Throwable;
 
     /**
      * get attachments.
      *
      * @return attachments.
-     */
+     */// Result中同样可以携带附加信息
     Map<String, String> getAttachments();
 
     /**
@@ -179,10 +182,11 @@ public interface Result extends Serializable {
      * @param fn
      * @return
      */
+    // 添加一个回调，当RPC调用完成时，会触发这里添加的回调
     Result whenCompleteWithContext(BiConsumer<Result, Throwable> fn);
 
     <U> CompletableFuture<U> thenApply(Function<Result, ? extends U> fn);
-
+    // 阻塞线程，等待此次RPC调用完成(或是超时)
     Result get() throws InterruptedException, ExecutionException;
 
     Result get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException;

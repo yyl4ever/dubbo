@@ -18,7 +18,7 @@
 package org.apache.dubbo.remoting.buffer;
 
 import java.nio.ByteBuffer;
-
+//门面类
 public final class ChannelBuffers {
 
     public static final ChannelBuffer EMPTY_BUFFER = new HeapChannelBuffer(0);
@@ -29,7 +29,7 @@ public final class ChannelBuffers {
     public static ChannelBuffer dynamicBuffer() {
         return dynamicBuffer(256);
     }
-
+//创建 DynamicChannelBuffer 对象，初始化大小由第一个参数指定，默认为 256。
     public static ChannelBuffer dynamicBuffer(int capacity) {
         return new DynamicChannelBuffer(capacity);
     }
@@ -38,7 +38,7 @@ public final class ChannelBuffers {
                                               ChannelBufferFactory factory) {
         return new DynamicChannelBuffer(capacity, factory);
     }
-
+//创建指定大小的 HeapChannelBuffer 对象。
     public static ChannelBuffer buffer(int capacity) {
         if (capacity < 0) {
             throw new IllegalArgumentException("capacity can not be negative");
@@ -48,7 +48,7 @@ public final class ChannelBuffers {
         }
         return new HeapChannelBuffer(capacity);
     }
-
+//将传入的 byte[] 数字封装成 HeapChannelBuffer 对象
     public static ChannelBuffer wrappedBuffer(byte[] array, int offset, int length) {
         if (array == null) {
             throw new NullPointerException("array == null");
@@ -78,7 +78,7 @@ public final class ChannelBuffers {
             return new ByteBufferBackedChannelBuffer(buffer);
         }
     }
-
+//创建 ByteBufferBackedChannelBuffer 对象，需要注意的是，底层的 ByteBuffer 使用的堆外内存，需要特别关注堆外内存的管理。
     public static ChannelBuffer directBuffer(int capacity) {
         if (capacity == 0) {
             return EMPTY_BUFFER;
@@ -89,21 +89,23 @@ public final class ChannelBuffers {
         buffer.clear();
         return buffer;
     }
-
+///用于比较两个 ChannelBuffer 是否相同，其中会逐个比较两个 ChannelBuffer 中的前 7 个可读字节，
+// 只有两者完全一致，才算两个 ChannelBuffer 相同
     public static boolean equals(ChannelBuffer bufferA, ChannelBuffer bufferB) {
         final int aLen = bufferA.readableBytes();
-        if (aLen != bufferB.readableBytes()) {
+        if (aLen != bufferB.readableBytes()) {// 比较两个ChannelBuffer的可读字节数
             return false;
         }
 
-        final int byteCount = aLen & 7;
+        final int byteCount = aLen & 7; // 只比较前7个字节
+
 
         int aIndex = bufferA.readerIndex();
         int bIndex = bufferB.readerIndex();
 
         for (int i = byteCount; i > 0; i--) {
             if (bufferA.getByte(aIndex) != bufferB.getByte(bIndex)) {
-                return false;
+                return false; // 前7个字节发现不同，则返回false
             }
             aIndex++;
             bIndex++;
@@ -129,7 +131,7 @@ public final class ChannelBuffers {
 
         return hashCode;
     }
-
+//用于比较两个 ChannelBuffer 的大小，会逐个比较两个 ChannelBuffer 中的全部可读字节，具体实现与 equals() 方法类似
     public static int compare(ChannelBuffer bufferA, ChannelBuffer bufferB) {
         final int aLen = bufferA.readableBytes();
         final int bLen = bufferB.readableBytes();

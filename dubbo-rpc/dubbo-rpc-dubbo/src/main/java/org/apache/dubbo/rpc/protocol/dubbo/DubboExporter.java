@@ -26,9 +26,13 @@ import java.util.Map;
  * DubboExporter
  */
 public class DubboExporter<T> extends AbstractExporter<T> {
-
+    /**
+     * 维护底层 Invoker 对应的 ServiceKey
+     */
     private final String key;
-
+    /**
+     * DubboProtocol 中的 exportMap 集合
+     */
     private final Map<String, Exporter<?>> exporterMap;
 
     public DubboExporter(Invoker<T> invoker, String key, Map<String, Exporter<?>> exporterMap) {
@@ -40,6 +44,7 @@ public class DubboExporter<T> extends AbstractExporter<T> {
     @Override
     public void unexport() {
         super.unexport();
+        // 清理该 DubboExporter 实例在 exportMap 中相应的元素
         exporterMap.remove(key);
     }
 

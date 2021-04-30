@@ -43,7 +43,10 @@ public class ConfigUtils {
     private static final Logger logger = LoggerFactory.getLogger(ConfigUtils.class);
     private static Pattern VARIABLE_PATTERN = Pattern.compile(
             "\\$\\s*\\{?\\s*([\\._0-9a-zA-Z]+)\\s*\\}?");
-    private static volatile Properties PROPERTIES;
+    private static volatile Properties PROPERTIES;/*关于 Properties 类是否线程安全
+
+    我们只需要知道 Properties 类是继承自 HashTable 类的，而 HashTable 类的方法和 HashMap 的方法是一样的，不过前者的所有方法都加上了 Synchronized 关键字修饰而已，而这个关键机就是加锁，所以说 HashTable 是线程安全的，而作为 HashTable 子类的 Properties 类，也自然是线程安全的了
+    */
     private static int PID = -1;
 
     private ConfigUtils() {

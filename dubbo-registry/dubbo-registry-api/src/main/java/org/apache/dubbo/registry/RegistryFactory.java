@@ -22,10 +22,11 @@ import org.apache.dubbo.common.extension.SPI;
 
 /**
  * RegistryFactory. (SPI, Singleton, ThreadSafe)
+ *  Registry 的工厂接口，负责创建 Registry 对象
  *
  * @see org.apache.dubbo.registry.support.AbstractRegistryFactory
  */
-@SPI("dubbo")
+@SPI("dubbo")// 指定了默认的扩展名为 dubbo
 public interface RegistryFactory {
 
     /**
@@ -42,7 +43,7 @@ public interface RegistryFactory {
      * @param url Registry address, is not allowed to be empty
      * @return Registry reference, never return empty value
      */
+    //@Adaptive 注解表示会生成适配器类并根据 URL 参数中的 protocol 参数值选择相应的实现。
     @Adaptive({"protocol"})//Dubbo 在运行时会为其动态生成相应的 “$Adaptive” 类型
     Registry getRegistry(URL url);//URL 一个很重要的作用就是与 @Adaptive 注解一起选择合适的扩展实现类，比如 ZookeeperRegistryFactory todo
-
 }

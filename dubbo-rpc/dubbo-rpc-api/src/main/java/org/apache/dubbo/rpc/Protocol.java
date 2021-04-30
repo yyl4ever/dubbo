@@ -25,7 +25,11 @@ import java.util.List;
 
 /**
  * Protocol. (API/SPI, Singleton, ThreadSafe)
+ *
+ * 在 Protocol 接口的实现中，export() 方法并不是简单地将 Invoker 对象包装成 Exporter 对象返回，其中还涉及代理对象的创建、底层 Server 的启动等操作；
+ * refer() 方法除了根据传入的 type 类型以及 URL 参数查询 Invoker 之外，还涉及相关 Client 的创建等操作。
  */
+// 默认使用DubboProtocol实现
 @SPI("dubbo")//某个接口被 @SPI注解修饰时，就表示该接口是扩展接口(yyl 即可以被扩展出多个实现类的接口）
 //@SPI 注解的 value 值指定了默认的扩展名称
 //，例如，在通过 Dubbo SPI 加载 Protocol 接口实现时，如果没有明确指定扩展名，
@@ -38,7 +42,7 @@ public interface Protocol {
      * Get default port when user doesn't config the port.
      *
      * @return default port
-     */
+     */// 默认端口
     int getDefaultPort();
 
     /**
@@ -54,6 +58,8 @@ public interface Protocol {
      * @return exporter reference for exported service, useful for unexport the service later
      * @throws RpcException thrown when error occurs during export the service, for example: port is occupied
      */
+    // 将一个Invoker暴露出去，export()方法实现需要是幂等的，
+     // 即同一个服务暴露多次和暴露一次的效果是相同的
     @Adaptive
     <T> Exporter<T> export(Invoker<T> invoker) throws RpcException;
 
@@ -72,6 +78,8 @@ public interface Protocol {
      * @return invoker service's local proxy
      * @throws RpcException when there's any error while connecting to the service provider
      */
+    // 引用一个Invoker，refer()方法会根据参数返回一个Invoker对象，
+    // Consumer端可以通过这个Invoker请求到Provider端的服务
     @Adaptive
     <T> Invoker<T> refer(Class<T> type, URL url) throws RpcException;
 
@@ -81,6 +89,8 @@ public interface Protocol {
      * 2. Release all occupied resources, for example: connection, port, etc. <br>
      * 3. Protocol can continue to export and refer new service even after it's destroyed.
      */
+    // 销毁export()方法以及refer()方法使用到的Invoker对象，释放
+    // 当前Protocol对象底层占用的资源
     void destroy();
 
     /**
@@ -88,6 +98,7 @@ public interface Protocol {
      *
      * @return
      */
+    // 返回当前Protocol底层的全部ProtocolServer
     default List<ProtocolServer> getServers() {
         return Collections.emptyList();
     }

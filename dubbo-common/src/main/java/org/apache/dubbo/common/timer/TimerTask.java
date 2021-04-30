@@ -21,6 +21,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * A task which is executed after the delay specified with
  * {@link Timer#newTimeout(TimerTask, long, TimeUnit)} (TimerTask, long, TimeUnit)}.
+ * 所有的定时任务都要继承 TimerTask 接口
  */
 public interface TimerTask {
 
@@ -29,6 +30,7 @@ public interface TimerTask {
      * {@link Timer#newTimeout(TimerTask, long, TimeUnit)}.
      *
      * @param timeout a handle which is associated with this task
+     * Timeout 对象，我们不仅可以查看定时任务的状态，还可以操作定时任务（例如取消关联的定时任务）
      */
     void run(Timeout timeout) throws Exception;
 }

@@ -23,6 +23,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * Schedules {@link TimerTask}s for one-time future execution in a background
  * thread.
+ * Timer 接口定义了定时器的基本行为
  */
 public interface Timer {
 
@@ -34,6 +35,7 @@ public interface Timer {
      * @throws IllegalStateException      if this timer has been {@linkplain #stop() stopped} already
      * @throws RejectedExecutionException if the pending timeouts are too many and creating new timeout
      *                                    can cause instability in the system.
+     * 提交一个定时任务（TimerTask）并返回关联的 Timeout 对象，这有点类似于向线程池提交任务的感觉。
      */
     Timeout newTimeout(TimerTask task, long delay, TimeUnit unit);
 

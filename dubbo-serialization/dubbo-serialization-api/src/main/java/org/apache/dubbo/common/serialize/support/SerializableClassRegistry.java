@@ -42,6 +42,7 @@ public abstract class SerializableClassRegistry {
      *
      * @param clazz object type
      * @param serializer object serializer
+     *                   将待优化的类写入该集合中暂存,在使用 Kryo、FST 等序列化算法时，会读取该集合中的类，完成注册操作
      */
     public static void registerClass(Class<?> clazz, Object serializer) {
         if (clazz == null) {
@@ -54,6 +55,7 @@ public abstract class SerializableClassRegistry {
      * get registered classes
      *
      * @return class serializer
+     * 按照 Dubbo 官方文档的说法，即使不注册任何类进行优化，Kryo 和 FST 的性能依然普遍优于Hessian2 和 Dubbo 序列化。
      * */
     public static Map<Class<?>, Object> getRegisteredClasses() {
         return REGISTRATIONS;

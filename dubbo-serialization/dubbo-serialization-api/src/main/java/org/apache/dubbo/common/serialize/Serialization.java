@@ -32,7 +32,7 @@ import java.io.OutputStream;
  *     e.g. &lt;dubbo:protocol serialization="xxx" /&gt;
  * </pre>
  */
-@SPI("hessian2")
+@SPI("hessian2")// 被@SPI注解修饰，默认是使用hessian2序列化算法
 public interface Serialization {
 
     /**
@@ -42,6 +42,7 @@ public interface Serialization {
      *
      * @return content type id
      */
+    // 获取ContentType的ID值，是一个byte类型的值，唯一确定一个算法
     byte getContentTypeId();
 
     /**
@@ -49,6 +50,7 @@ public interface Serialization {
      *
      * @return content type
      */
+    // 每一种序列化算法都对应一个ContentType，该方法用于获取ContentType
     String getContentType();
 
     /**
@@ -59,6 +61,8 @@ public interface Serialization {
      * @return serializer
      * @throws IOException
      */
+    // 创建一个ObjectOutput对象，ObjectOutput负责实现序列化的功能，即将Java
+    // 对象转化为字节序列
     @Adaptive
     ObjectOutput serialize(URL url, OutputStream output) throws IOException;
 
@@ -70,6 +74,8 @@ public interface Serialization {
      * @return deserializer
      * @throws IOException
      */
+    // 创建一个ObjectInput对象，ObjectInput负责实现反序列化的功能，即将
+    // 字节序列转换成Java对象
     @Adaptive
     ObjectInput deserialize(URL url, InputStream input) throws IOException;
 

@@ -32,6 +32,20 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.Executor;
 
+/**
+ * 缓存当前 ZookeeperClient 实例创建的持久 ZNode 节点
+ * 管理当前 ZookeeperClient 实例添加的各类监听器
+ * 管理当前 ZookeeperClient 的运行状态
+ *
+ * TargetDataListener:
+ * 为什么 AbstractZookeeperClient 要使用泛型定义？这是因为不同的 ZookeeperClient 实现可能依赖不同的 Zookeeper 客户端组件，
+ * 不同 Zookeeper 客户端组件的监听器实现也有所不同，而整个 dubbo-remoting-zookeeper 模块对外暴露的监听器是统一的。
+ * 因此，这时就需要一层转换进行解耦，这层解耦就是通过 TargetDataListener 完成的。
+ * -- 虽然在 Dubbo 2.7.7 版本中只支持 Curator，但是在 Dubbo 2.6.5 版本的源码中可以看到，ZookeeperClient 还有使用 ZkClient 的实现。
+ *
+ * @param <TargetDataListener>
+ * @param <TargetChildListener>
+ */
 public abstract class AbstractZookeeperClient<TargetDataListener, TargetChildListener> implements ZookeeperClient {
 
     protected static final Logger logger = LoggerFactory.getLogger(AbstractZookeeperClient.class);
@@ -40,16 +54,26 @@ public abstract class AbstractZookeeperClient<TargetDataListener, TargetChildLis
     protected int DEFAULT_SESSION_TIMEOUT_MS = 60 * 1000;
 
     private final URL url;
-
+    /**
+     * 监听器,负责监听 Dubbo 与 Zookeeper 集群的连接状态，包括 SESSION_LOST、CONNECTED、RECONNECTED、SUSPENDED 和 NEW_SESSION_CREATED
+     */
     private final Set<StateListener> stateListeners = new CopyOnWriteArraySet<StateListener>();
-
+    /**
+     * 主要监听某个 ZNode 节点下的子节点变化
+     */
     private final ConcurrentMap<String, ConcurrentMap<ChildListener, TargetChildListener>> childListeners = new ConcurrentHashMap<String, ConcurrentMap<ChildListener, TargetChildListener>>();
-
+    /**
+     * 主要监听某个节点存储的数据变化
+     */
     private final ConcurrentMap<String, ConcurrentMap<DataListener, TargetDataListener>> listeners = new ConcurrentHashMap<String, ConcurrentMap<DataListener, TargetDataListener>>();
 
     private volatile boolean closed = false;
-
-    private final Set<String>  persistentExistNodePath = new ConcurrentHashSet<>();
+    /**
+     * 缓存了当前 ZookeeperClient 创建的持久 ZNode 节点路径，
+     * 在创建 ZNode 节点之前，会先查这个缓存，
+     * 而不是与 Zookeeper 交互来判断持久 ZNode 节点是否存在，这就减少了一次与 Zookeeper 的交互
+     */
+    private final Set<String> persistentExistNodePath = new ConcurrentHashSet<>();
 
     public AbstractZookeeperClient(URL url) {
         this.url = url;
@@ -61,7 +85,7 @@ public abstract class AbstractZookeeperClient<TargetDataListener, TargetChildLis
     }
 
     @Override
-    public void delete(String path){
+    public void delete(String path) {
         //never mind if ephemeral
         persistentExistNodePath.remove(path);
         deletePath(path);
@@ -71,7 +95,7 @@ public abstract class AbstractZookeeperClient<TargetDataListener, TargetChildLis
     @Override
     public void create(String path, boolean ephemeral) {
         if (!ephemeral) {
-            if(persistentExistNodePath.contains(path)){
+            if (persistentExistNodePath.contains(path)) {
                 return;
             }
             if (checkExists(path)) {
@@ -119,17 +143,21 @@ public abstract class AbstractZookeeperClient<TargetDataListener, TargetChildLis
 
     @Override
     public void addDataListener(String path, DataListener listener, Executor executor) {
+        // // 获取指定path上的DataListener集合
         ConcurrentMap<DataListener, TargetDataListener> dataListenerMap = listeners.computeIfAbsent(path, k -> new ConcurrentHashMap<>());
+        // 查询该DataListener关联的TargetDataListener
         TargetDataListener targetListener = dataListenerMap.computeIfAbsent(listener, k -> createTargetDataListener(path, k));
+        // 通过TargetDataListener在指定的path上添加监听
+
         addTargetDataListener(path, targetListener, executor);
     }
 
     @Override
-    public void removeDataListener(String path, DataListener listener ){
+    public void removeDataListener(String path, DataListener listener) {
         ConcurrentMap<DataListener, TargetDataListener> dataListenerMap = listeners.get(path);
         if (dataListenerMap != null) {
             TargetDataListener targetListener = dataListenerMap.remove(listener);
-            if(targetListener != null){
+            if (targetListener != null) {
                 removeTargetDataListener(path, targetListener);
             }
         }
@@ -219,6 +247,7 @@ public abstract class AbstractZookeeperClient<TargetDataListener, TargetChildLis
 
     /**
      * we invoke the zookeeper client to delete the node
+     *
      * @param path the node path
      */
     protected abstract void deletePath(String path);

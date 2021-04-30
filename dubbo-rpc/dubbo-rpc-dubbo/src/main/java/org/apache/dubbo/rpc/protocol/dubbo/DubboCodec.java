@@ -45,6 +45,7 @@ import static org.apache.dubbo.rpc.protocol.dubbo.Constants.DEFAULT_DECODE_IN_IO
 
 /**
  * Dubbo codec.
+ *  ExchangeCodec 只处理了 Dubbo 协议的请求头，而 DubboCodec 则是通过继承的方式，在 ExchangeCodec 基础之上，添加了解析 Dubbo 消息体的功能。
  */
 public class DubboCodec extends ExchangeCodec {
 
@@ -60,6 +61,14 @@ public class DubboCodec extends ExchangeCodec {
     public static final Class<?>[] EMPTY_CLASS_ARRAY = new Class<?>[0];
     private static final Logger log = LoggerFactory.getLogger(DubboCodec.class);
 
+    /**
+     * 会根据 DECODE_IN_IO_THREAD_KEY 这个参数决定是否在 DubboCodec 中进行解码（DubboCodec 是在 IO 线程中调用的）
+     * @param channel
+     * @param is
+     * @param header
+     * @return
+     * @throws IOException
+     */
     @Override
     protected Object decodeBody(Channel channel, InputStream is, byte[] header) throws IOException {
         byte flag = header[2], proto = (byte) (flag & SERIALIZATION_MASK);
@@ -85,8 +94,14 @@ public class DubboCodec extends ExchangeCodec {
                         if (channel.getUrl().getParameter(DECODE_IN_IO_THREAD_KEY, DEFAULT_DECODE_IN_IO_THREAD)) {
                             result = new DecodeableRpcResult(channel, res, is,
                                     (Invocation) getRequestData(id), proto);
-                            result.decode();
-                        } else {
+                            result.decode();// 直接调用decode()方法在当前IO线程中解码
+                        } else {// 这里只是读取数据，不会调用decode()方法在当前IO线程中进行解码
+                            /**
+                             * 如果不在 DubboCodec 中解码，那会在哪里解码呢？
+                             *  DecodeHandler（Transport 层），它的 received() 方法也是可以进行解码的，
+                             *  另外，DecodeableRpcInvocation 中有一个 hasDecoded 字段来判断当前是否已经完成解码，
+                             *  这样，三者配合就可以根据 DECODE_IN_IO_THREAD_KEY 参数决定执行解码操作的线程了。
+                             */
                             result = new DecodeableRpcResult(channel, res,
                                     new UnsafeByteArrayInputStream(readMessageData(is)),
                                     (Invocation) getRequestData(id), proto);
@@ -163,22 +178,32 @@ public class DubboCodec extends ExchangeCodec {
         encodeResponseData(channel, out, data, DUBBO_VERSION);
     }
 
+    /**
+     * 按照 Dubbo 协议的格式编码 Request 请求体
+     * @param channel
+     * @param out
+     * @param data
+     * @param version
+     * @throws IOException
+     */
     @Override
     protected void encodeRequestData(Channel channel, ObjectOutput out, Object data, String version) throws IOException {
+        //// 请求体相关的内容，都封装在了RpcInvocation
         RpcInvocation inv = (RpcInvocation) data;
 
-        out.writeUTF(version);
+        out.writeUTF(version);// 写入版本号
         out.writeUTF(inv.getAttachment(PATH_KEY));
         out.writeUTF(inv.getAttachment(VERSION_KEY));
 
-        out.writeUTF(inv.getMethodName());
-        out.writeUTF(inv.getParameterTypesDesc());
-        Object[] args = inv.getArguments();
+        out.writeUTF(inv.getMethodName());// 写入方法名称
+        out.writeUTF(inv.getParameterTypesDesc());// 写入参数类型列表
+        Object[] args = inv.getArguments();// 依次写入全部参数
         if (args != null) {
             for (int i = 0; i < args.length; i++) {
                 out.writeObject(encodeInvocationArgument(channel, inv, i));
             }
         }
+        // 依次写入全部的附加信息
         out.writeAttachments(inv.getObjectAttachments());
     }
 

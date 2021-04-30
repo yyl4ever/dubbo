@@ -24,6 +24,11 @@ import java.net.InetSocketAddress;
  * @see org.apache.dubbo.remoting.Client
  * @see RemotingServer#getChannels()
  * @see RemotingServer#getChannel(InetSocketAddress)
+ *
+ * Channel 是对两个 Endpoint 连接的抽象，好比连接两个位置的传送带，
+ * 两个 Endpoint 传输的消息就好比传送带上的货物，消息发送端会往 Channel 写入消息，而接收端会从 Channel 读取消息。
+ *
+ *  Channel 接口继承了 Endpoint 接口，也具备开关状态以及发送数据的能力；另一个是可以在 Channel 上附加 KV 属性。
  */
 public interface Channel extends Endpoint {
 

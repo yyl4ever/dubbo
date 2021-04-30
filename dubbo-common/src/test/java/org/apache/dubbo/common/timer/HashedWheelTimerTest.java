@@ -57,7 +57,7 @@ public class HashedWheelTimerTest {
 
         try {
             //this will throw a exception
-            timer.newTimeout(new PrintTask(), 5, TimeUnit.SECONDS);
+            timer.newTimeout(new PrintTask(), 5, TimeUnit.SECONDS); //java.lang.IllegalStateException: cannot be started once stopped
         } catch (Exception e) {
             e.printStackTrace();
         }

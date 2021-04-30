@@ -31,13 +31,17 @@ public class HeapChannelBufferFactory implements ChannelBufferFactory {
         return INSTANCE;
     }
 
+    //通过 ChannelBuffers 这个工具类创建一个指定大小 HeapChannelBuffer 对象
     @Override
     public ChannelBuffer getBuffer(int capacity) {
+        // 新建一个HeapChannelBuffer，底层的会新建一个长度为capacity的byte数组
         return ChannelBuffers.buffer(capacity);
     }
 
     @Override
     public ChannelBuffer getBuffer(byte[] array, int offset, int length) {
+        // 新建一个HeapChannelBuffer，并且会拷贝array数组中offset~offset+lenght
+        // 的数据到新HeapChannelBuffer中
         return ChannelBuffers.wrappedBuffer(array, offset, length);
     }
 

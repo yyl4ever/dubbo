@@ -24,6 +24,7 @@ import java.util.concurrent.ExecutorService;
 
 /**
  * ExchangeChannel. (API/SPI, Prototype, ThreadSafe)
+ * 在 Channel 接口之上抽象了 Exchange 层的网络连接
  */
 public interface ExchangeChannel extends Channel {
 
@@ -50,6 +51,7 @@ public interface ExchangeChannel extends Channel {
 
     /**
      * send request.
+     * request() 方法负责发送请求，从图中可以看到这里有两个重载，其中一个重载可以指定请求的超时时间，返回值都是 Future 对象。
      *
      * @param request
      * @return response future

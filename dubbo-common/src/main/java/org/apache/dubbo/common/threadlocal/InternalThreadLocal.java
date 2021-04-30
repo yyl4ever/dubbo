@@ -33,11 +33,13 @@ import java.util.Set;
  */
 public class InternalThreadLocal<V> {
 
+    // 待删除的集合 Set<InternalThreadLocal> 的索引位置。绑定到当前线程的所有 InternalThreadLocal，方便管理对象及内存的回收
     private static final int VARIABLES_TO_REMOVE_INDEX = InternalThreadLocalMap.nextVariableIndex();
 
     private final int index;
 
     public InternalThreadLocal() {
+        // 初始化 index
         index = InternalThreadLocalMap.nextVariableIndex();
     }
 
@@ -87,8 +89,10 @@ public class InternalThreadLocal<V> {
     @SuppressWarnings("unchecked")
     private static void addToVariablesToRemove(InternalThreadLocalMap threadLocalMap, InternalThreadLocal<?> variable) {
         Object v = threadLocalMap.indexedVariable(VARIABLES_TO_REMOVE_INDEX);
+        // 绑定到当前线程的所有 InternalThreadLocal
         Set<InternalThreadLocal<?>> variablesToRemove;
         if (v == InternalThreadLocalMap.UNSET || v == null) {
+            // yyl 这里为什么要用 IdentityHashMap 作为 newSetFromMap 的参数呢
             variablesToRemove = Collections.newSetFromMap(new IdentityHashMap<InternalThreadLocal<?>, Boolean>());
             threadLocalMap.setIndexedVariable(VARIABLES_TO_REMOVE_INDEX, variablesToRemove);
         } else {
@@ -116,18 +120,21 @@ public class InternalThreadLocal<V> {
      */
     @SuppressWarnings("unchecked")
     public final V get() {
+        // 获取当前线程绑定的InternalThreadLocalMap
         InternalThreadLocalMap threadLocalMap = InternalThreadLocalMap.get();
         Object v = threadLocalMap.indexedVariable(index);
-        if (v != InternalThreadLocalMap.UNSET) {
+        if (v != InternalThreadLocalMap.UNSET) { // 如果非UNSET，则表示读取到了有效数据，直接返回
             return (V) v;
         }
-
+        // 读取到UNSET值，则会调用initialize()方法进行初始化，
+        // 其中首先会调用initialValue()方法进行初始化，然后会调用 setIndexedVariable()方法和addToVariablesToRemove()方法存储初始化得到的值
         return initialize(threadLocalMap);
     }
 
     private V initialize(InternalThreadLocalMap threadLocalMap) {
         V v = null;
-        try {
+        try {// todo threadlocal
+            // 在 RpcContext 中，LOCAL 和 SERVER_LOCAL 两个 InternalThreadLocal 类型的字段都实现了 initialValue() 方法，它们的实现都是创建并返回 RpcContext 对象
             v = initialValue();
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -143,10 +150,13 @@ public class InternalThreadLocal<V> {
      */
     public final void set(V value) {
         if (value == null || value == InternalThreadLocalMap.UNSET) {
-            remove();
+            remove();// 如果要存储的值为null或是UNSERT，则直接清除
         } else {
+            // 获取当前线程绑定的InternalThreadLocalMap
             InternalThreadLocalMap threadLocalMap = InternalThreadLocalMap.get();
+            // 存值：将value存储到InternalThreadLocalMap.indexedVariables集合中
             if (threadLocalMap.setIndexedVariable(index, value)) {
+                // 将当前InternalThreadLocal记录到待删除集合中
                 addToVariablesToRemove(threadLocalMap, this);
             }
         }

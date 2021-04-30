@@ -21,8 +21,9 @@ import java.io.IOException;
 import java.io.InputStream;
 
 public class ChannelBufferInputStream extends InputStream {
-
+////其实现 InputStream 接口的 read*() 方法全部都是从 ChannelBuffer 中读取数据
     private final ChannelBuffer buffer;
+    //读取数据的起位置
     private final int startIndex;
     private final int endIndex;
 

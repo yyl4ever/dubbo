@@ -32,9 +32,20 @@ public final class FailedRegisteredTask extends AbstractRetryTask {
         super(url, registry, NAME);
     }
 
+    /**
+     * 执行关联 Registry 的 doRegister() 方法，完成与服务发现组件交互。
+     *
+     * @param url
+     * @param registry
+     * @param timeout
+     */
     @Override
     protected void doRetry(URL url, FailbackRegistry registry, Timeout timeout) {
-        registry.doRegister(url);
-        registry.removeFailedRegisteredTask(url);
+        registry.doRegister(url);// 重新注册
+        /**
+         * 如果注册成功，则会调用 removeFailedRegisteredTask()
+         * 方法将当前关联的 URL 以及当前重试任务从 failedRegistered 集合中删除。如果注册失败，则会抛出异常，执行上文介绍的 reput ()方法重试。
+         */
+        registry.removeFailedRegisteredTask(url);// 删除重试任务
     }
 }

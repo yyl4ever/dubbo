@@ -56,7 +56,7 @@ public abstract class AbstractExporter<T> implements Exporter<T> {
             return;
         }
         unexported = true;
-        getInvoker().destroy();
+        getInvoker().destroy();// 调用 Invoker 对象的 destory() 方法进行销毁
     }
 
     @Override

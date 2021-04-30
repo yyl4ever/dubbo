@@ -50,6 +50,7 @@ import static org.apache.dubbo.common.constants.CommonConstants.SSL_ENABLED_KEY;
 
 /**
  * NettyServer.
+ * 基于 Netty 4 实现的 NettyServer
  */
 public class NettyServer extends AbstractServer implements RemotingServer {
 
@@ -74,6 +75,8 @@ public class NettyServer extends AbstractServer implements RemotingServer {
     public NettyServer(URL url, ChannelHandler handler) throws RemotingException {
         // you can customize name and type of client thread pool by THREAD_NAME_KEY and THREADPOOL_KEY in CommonConstants.
         // the handler will be wrapped: MultiMessageHandler->HeartbeatHandler->handler
+
+        // 调用 ChannelHandlers.wrap() 方法对传入的 ChannelHandler 对象进行修饰
         super(ExecutorUtil.setThreadName(url, SERVER_THREAD_POOL_NAME), ChannelHandlers.wrap(handler, url));
     }
 
@@ -81,19 +84,28 @@ public class NettyServer extends AbstractServer implements RemotingServer {
      * Init and start netty server
      *
      * @throws Throwable
+     * 和启动一个 Netty 的 Server 端基本流程类似：初始化 ServerBootstrap、创建 Boss EventLoopGroup 和 Worker EventLoopGroup、
+     * 创建 ChannelInitializer 指定如何初始化 Channel 上的 ChannelHandler 等一系列 Netty 使用的标准化流程。
      */
     @Override
     protected void doOpen() throws Throwable {
-        bootstrap = new ServerBootstrap();
+        bootstrap = new ServerBootstrap(); // 创建ServerBootstrap
 
+        // 创建boss EventLoopGroup
         bossGroup = NettyEventLoopFactory.eventLoopGroup(1, "NettyServerBoss");
+        // 创建worker EventLoopGroup
         workerGroup = NettyEventLoopFactory.eventLoopGroup(
                 getUrl().getPositiveParameter(IO_THREADS_KEY, Constants.DEFAULT_IO_THREADS),
                 "NettyServerWorker");
-
+// 创建NettyServerHandler，它是一个Netty中的ChannelHandler实现，
+        // 不是Dubbo Remoting层的ChannelHandler接口的实现
+        //第二个参数传入的是 NettyServer 这个对象，你可以追溯一下 NettyServer 的继承结构，会发现它的最顶层父类 AbstractPeer 实现了 ChannelHandler，并且将所有的方法委托给其中封装的 ChannelHandler 对象
+        // 也就是说，NettyServerHandler 会将数据委托给这个 ChannelHandler
         final NettyServerHandler nettyServerHandler = new NettyServerHandler(getUrl(), this);
+        // 获取当前NettyServer创建的所有Channel，这里的channels集合中的
+        // Channel不是Netty中的Channel对象，而是Dubbo Remoting层的Channel对象
         channels = nettyServerHandler.getChannels();
-
+        // 初始化ServerBootstrap，指定boss和worker EventLoopGroup
         bootstrap.group(bossGroup, workerGroup)
                 .channel(NettyEventLoopFactory.serverSocketChannelClass())
                 .option(ChannelOption.SO_REUSEADDR, Boolean.TRUE)
@@ -102,23 +114,40 @@ public class NettyServer extends AbstractServer implements RemotingServer {
                 .childHandler(new ChannelInitializer<SocketChannel>() {
                     @Override
                     protected void initChannel(SocketChannel ch) throws Exception {
+                        // 连接空闲超时时间
                         // FIXME: should we use getTimeout()?
                         int idleTimeout = UrlUtils.getIdleTimeout(getUrl());
+                        // NettyCodecAdapter 中会创建 Decoder 和 Encoder
                         NettyCodecAdapter adapter = new NettyCodecAdapter(getCodec(), getUrl(), NettyServer.this);
                         if (getUrl().getParameter(SSL_ENABLED_KEY, false)) {
                             ch.pipeline().addLast("negotiation",
                                     SslHandlerInitializer.sslServerHandler(getUrl(), nettyServerHandler));
                         }
                         ch.pipeline()
+                                // 注册Decoder和Encoder
                                 .addLast("decoder", adapter.getDecoder())
                                 .addLast("encoder", adapter.getEncoder())
+                                // 注册IdleStateHandler
+                                /**
+                                 * IdleStateHandler: Netty 提供的一个工具型 ChannelHandler，
+                                 * 用于定时心跳请求的功能或是自动关闭长时间空闲连接的功能。
+                                 * 它的原理到底是怎样的呢？在 IdleStateHandler 中通过 lastReadTime、lastWriteTime 等几个字段，
+                                 * 记录了最近一次读/写事件的时间，IdleStateHandler 初始化的时候，
+                                 * 会创建一个定时任务，定时检测当前时间与最后一次读/写时间的差值。
+                                 * 如果超过我们设置的阈值（也就是上面 NettyServer 中设置的 idleTimeout），
+                                 * 就会触发 IdleStateEvent 事件，并传递给后续的 ChannelHandler 进行处理。
+                                 * 后续 ChannelHandler 的 userEventTriggered() 方法会根据接收到的 IdleStateEvent 事件，
+                                 * 决定是关闭长时间空闲的连接，还是发送心跳探活。
+                                 */
                                 .addLast("server-idle-handler", new IdleStateHandler(0, 0, idleTimeout, MILLISECONDS))
+                                // 注册NettyServerHandler
                                 .addLast("handler", nettyServerHandler);
                     }
                 });
+        // 绑定指定的地址和端口
         // bind
         ChannelFuture channelFuture = bootstrap.bind(getBindAddress());
-        channelFuture.syncUninterruptibly();
+        channelFuture.syncUninterruptibly();// 等待bind操作完成
         channel = channelFuture.channel();
 
     }

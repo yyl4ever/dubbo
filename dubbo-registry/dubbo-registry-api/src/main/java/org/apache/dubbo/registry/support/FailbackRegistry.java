@@ -43,37 +43,49 @@ import static org.apache.dubbo.registry.Constants.DEFAULT_REGISTRY_RETRY_PERIOD;
 import static org.apache.dubbo.registry.Constants.REGISTRY_RETRY_PERIOD_KEY;
 
 /**
- * 实现失败重试功能
+ * 实现失败重试功能，备注：能够使用重试机制的业务接口得是“幂等”的
+ *
+ * 在 AbstractRegistry 的基础上，提供了重试机制。具体方法就是通过之前课时介绍的时间轮，在 register()/ unregister()、subscribe()/ unsubscribe()
+ * 等核心方法失败时，添加重试定时任务，实现重试机制，同时也添加了相应的定时任务清理逻辑。
+ *
  * FailbackRegistry. (SPI, Prototype, ThreadSafe)
  */
 public abstract class FailbackRegistry extends AbstractRegistry {
 
     /*  retry task map */
-    // 失败重试集合
+    // 失败重试集合 -- 注册失败的 URL 集合，其中 Key 是注册失败的 URL，Value 是对应的重试任务。
     private final ConcurrentMap<URL, FailedRegisteredTask> failedRegistered = new ConcurrentHashMap<URL, FailedRegisteredTask>();
 
+    // 取消注册失败的 URL 集合，其中 Key 是取消注册失败的 URL，Value 是对应的重试任务。
     private final ConcurrentMap<URL, FailedUnregisteredTask> failedUnregistered = new ConcurrentHashMap<URL, FailedUnregisteredTask>();
 
+    // 订阅失败 URL 集合，其中 Key 是订阅失败的 URL + Listener 集合，Value 是相应的重试任务。
     private final ConcurrentMap<Holder, FailedSubscribedTask> failedSubscribed = new ConcurrentHashMap<Holder, FailedSubscribedTask>();
 
+    // 取消订阅失败的 URL 集合，其中 Key 是取消订阅失败的 URL + Listener 集合，Value 是相应的重试任务。
     private final ConcurrentMap<Holder, FailedUnsubscribedTask> failedUnsubscribed = new ConcurrentHashMap<Holder, FailedUnsubscribedTask>();
 
+    // 通知失败的 URL 集合，其中 Key 是通知失败的 URL + Listener 集合，Value 是相应的重试任务。
     private final ConcurrentMap<Holder, FailedNotifiedTask> failedNotified = new ConcurrentHashMap<Holder, FailedNotifiedTask>();
 
     /**
      * The time in milliseconds the retryExecutor will wait
+     * 重试操作的时间间隔
      */
     private final int retryPeriod;
 
+    // 用于定时执行失败重试操作的时间轮
     // Timer for failure retry, regular check if there is a request for failure, and if there is, an unlimited retry
     private final HashedWheelTimer retryTimer;
 
     public FailbackRegistry(URL url) {
-        super(url);
+        super(url);// 调用父类 AbstractRegistry 的构造方法完成本地缓存相关的初始化操作
+        // 从传入的 URL 参数中获取重试操作的时间间隔（即retry.period 参数）来初始化 retryPeriod 字段
         this.retryPeriod = url.getParameter(REGISTRY_RETRY_PERIOD_KEY, DEFAULT_REGISTRY_RETRY_PERIOD);
 
+        // 最后初始化 retryTimer 时间轮
         // since the retry task will not be very much. 128 ticks is enough.
-        retryTimer = new HashedWheelTimer(new NamedThreadFactory("DubboRegistryRetryTimer", true), retryPeriod, TimeUnit.MILLISECONDS, 128);
+        retryTimer = new HashedWheelTimer(new NamedThreadFactory("DubboRegistryRetryTimer", true), retryPeriod, TimeUnit.MILLISECONDS, 128);// ticksPerWheel 一轮的tick数; retryPeriod 一个tick的持续时间
     }
 
     public void removeFailedRegisteredTask(URL url) {
@@ -99,14 +111,18 @@ public abstract class FailbackRegistry extends AbstractRegistry {
         failedNotified.remove(h);
     }
 
+    /**
+     * @param url
+     */
     private void addFailedRegistered(URL url) {
         FailedRegisteredTask oldOne = failedRegistered.get(url);
-        if (oldOne != null) {
+        if (oldOne != null) { // 已经存在重试任务，则无须创建，直接返回
             return;
         }
         FailedRegisteredTask newTask = new FailedRegisteredTask(url, this);
         oldOne = failedRegistered.putIfAbsent(url, newTask);
         if (oldOne == null) {
+            // 如果是新建的重试任务，则提交到时间轮中，等待retryPeriod毫秒后执行
             // never has a retry task. then start a new task for retry.
             retryTimer.newTimeout(newTask, retryPeriod, TimeUnit.MILLISECONDS);
         }
@@ -160,14 +176,15 @@ public abstract class FailbackRegistry extends AbstractRegistry {
         }
     }
 
+    // removeFailedSubscribed()方法中会清理FailedSubscribedTask、FailedUnsubscribedTask、FailedNotifiedTask三类定时任务
     private void removeFailedSubscribed(URL url, NotifyListener listener) {
-        Holder h = new Holder(url, listener);
+        Holder h = new Holder(url, listener);// 清理FailedSubscribedTask
         FailedSubscribedTask f = failedSubscribed.remove(h);
         if (f != null) {
             f.cancel();
         }
-        removeFailedUnsubscribed(url, listener);
-        removeFailedNotified(url, listener);
+        removeFailedUnsubscribed(url, listener);// 清理FailedUnsubscribedTask
+        removeFailedNotified(url, listener);// 清理FailedNotifiedTask
     }
 
     private void addFailedUnsubscribed(URL url, NotifyListener listener) {
@@ -192,6 +209,13 @@ public abstract class FailbackRegistry extends AbstractRegistry {
         }
     }
 
+    /**
+     * 创建相应的 FailedNotifiedTask 任务，添加到 failedNotified 集合中，
+     * 同时也会添加到时间轮中等待执行。如果已存在相应的 FailedNotifiedTask 重试任务，则会更新任务需要处理的 URL 集合。
+     * @param url
+     * @param listener
+     * @param urls
+     */
     private void addFailedNotified(URL url, NotifyListener listener, List<URL> urls) {
         Holder h = new Holder(url, listener);
         FailedNotifiedTask newTask = new FailedNotifiedTask(url, listener);
@@ -236,17 +260,22 @@ public abstract class FailbackRegistry extends AbstractRegistry {
 
     @Override
     public void register(URL url) {
-        if (!acceptable(url)) {
+        if (!acceptable(url)) { // 根据 registryUrl 中 accepts 参数指定的匹配模式，决定是否接受当前要注册的 Provider URL
             logger.info("URL " + url + " will not be registered to Registry. Registry " + url + " does not accept service of this protocol type.");
             return;
         }
-        super.register(url);
-        removeFailedRegistered(url);
-        removeFailedUnregistered(url);
+        super.register(url);// 调用父类 AbstractRegistry 的 register() 方法，将 Provider URL 写入 registered 集合中。 -- 完成本地文件缓存的初始化
+        // 调用 removeFailedRegistered() 方法和 removeFailedUnregistered() 方法，
+        // 将该 Provider URL 从 failedRegistered 集合和 failedUnregistered 集合中删除，并停止相关的重试任务。 -- 清理failedRegistered集合和failedUnregistered集合，并取消相关任务
+        removeFailedRegistered(url); // 清理指定 URL 关联的定时任务 -- 清理FailedRegisteredTask定时任务
+        removeFailedUnregistered(url); // 清理FailedUnregisteredTask定时任务
         try {
             // Sending a registration request to the server side
-            doRegister(url);
+            doRegister(url); // 调用 doRegister() 方法，与服务发现组件进行交互。该方法由子类实现，每个子类只负责接入一个特定的服务发现组件。
         } catch (Exception e) {
+            // 根据 URL 参数以及异常的类型，进行分类处理：待注册 URL 的 check 参数为 true（默认值为 true）；
+            // 待注册的 URL 不是 consumer 协议；registryUrl 的 check 参数也为 true（默认值为 true）。
+            // 若满足这三个条件或者抛出的异常为 SkipFailbackWrapperException，则直接抛出异常。否则，就会创建重试任务并添加到 failedRegistered 集合中。
             Throwable t = e;
 
             // If the startup detection is opened, the Exception is thrown directly.
@@ -263,6 +292,8 @@ public abstract class FailbackRegistry extends AbstractRegistry {
                 logger.error("Failed to register " + url + ", waiting for retry, cause: " + t.getMessage(), t);
             }
 
+            // 当 Provider 向 Registry 注册 URL 的时候，如果注册失败，且未设置 check 属性，则创建一个定时任务，添加到时间轮中
+            // // 如果不抛出异常，则创建失败重试的任务，并添加到 failedRegistered 集合中
             // Record a failed registration request to a failed list, retry regularly
             addFailedRegistered(url);
         }
@@ -332,23 +363,27 @@ public abstract class FailbackRegistry extends AbstractRegistry {
         }
     }
 
+    // 覆盖了 AbstractRegistry
     @Override
     public void subscribe(URL url, NotifyListener listener) {
         // 调用父类 订阅方法
         super.subscribe(url, listener);
         // 首先移除失败的定时任务
-        removeFailedSubscribed(url, listener);
+        removeFailedSubscribed(url, listener);  // 关注这个方法
         try {
             // Sending a subscription request to the server side
-            // 调用子类订阅模板方法
+            // 调用子类订阅模板方法 -- 真正与服务发现组件的交互
             doSubscribe(url, listener);
         } catch (Exception e) {
+            /**
+             * 在处理异常的时候，会先获取缓存的订阅数据并调用 notify() 方法，如果没有缓存相应的订阅数据，才会检查 check 参数决定是否抛出异常
+             */
             Throwable t = e;
             // 从缓存文件取出信息
             List<URL> urls = getCacheUrls(url);
             if (CollectionUtils.isNotEmpty(urls)) {
                 // 加载缓存中文件服务列表
-                notify(url, listener, urls);
+                notify(url, listener, urls);// 覆盖父类方法
                 logger.error("Failed to subscribe " + url + ", Using cached list: " + urls + " from cache file: " + getUrl().getParameter(FILE_KEY, System.getProperty("user.home") + "/dubbo-registry-" + url.getHost() + ".cache") + ", cause: " + t.getMessage(), t);
             } else {
                 // If the startup detection is opened, the Exception is thrown directly.
@@ -401,6 +436,7 @@ public abstract class FailbackRegistry extends AbstractRegistry {
 
     @Override
     protected void notify(URL url, NotifyListener listener, List<URL> urls) {
+        // 检查url和listener不为空
         if (url == null) {
             throw new IllegalArgumentException("notify url == null");
         }
@@ -408,8 +444,11 @@ public abstract class FailbackRegistry extends AbstractRegistry {
             throw new IllegalArgumentException("notify listener == null");
         }
         try {
+            // FailbackRegistry.doNotify()方法实际上就是调用父类
+            // AbstractRegistry.notify()方法，没有其他逻辑
             doNotify(url, listener, urls);
         } catch (Exception t) {
+            // doNotify()方法出现异常，则会添加一个定时任务
             // Record a failed registration request to a failed list, retry regularly
             addFailedNotified(url, listener, urls);
             logger.error("Failed to notify for subscribe " + url + ", waiting for retry, cause: " + t.getMessage(), t);
@@ -420,6 +459,12 @@ public abstract class FailbackRegistry extends AbstractRegistry {
         super.notify(url, listener, urls);
     }
 
+    /**
+     * 该方法会直接通过 FailedRegisteredTask 任务处理 registered 集合中的全部 URL，
+     * 通过 FailedSubscribedTask 任务处理 subscribed 集合中的 URL 以及关联的 NotifyListener。
+     *
+     * @throws Exception
+     */
     @Override
     protected void recover() throws Exception {
         // register
@@ -450,7 +495,7 @@ public abstract class FailbackRegistry extends AbstractRegistry {
     @Override
     public void destroy() {
         super.destroy();
-        retryTimer.stop();
+        retryTimer.stop();// 调用时间轮（即 retryTimer 字段）的 stop() 方法，释放时间轮相关的资源
     }
 
     // ==== Template method ====

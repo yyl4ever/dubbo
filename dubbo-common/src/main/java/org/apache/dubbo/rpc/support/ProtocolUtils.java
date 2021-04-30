@@ -31,7 +31,7 @@ import static org.apache.dubbo.common.constants.CommonConstants.GROUP_KEY;
 import static org.apache.dubbo.common.constants.CommonConstants.VERSION_KEY;
 
 public class ProtocolUtils {
-
+    //serviceGroup、serviceName、serviceVersion、port
     private static final ConcurrentMap<String, GroupServiceKeyCache> groupServiceKeyCacheMap = new ConcurrentHashMap<>();
 
     private ProtocolUtils() {

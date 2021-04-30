@@ -28,6 +28,10 @@ import org.apache.dubbo.remoting.transport.ChannelHandlerAdapter;
 
 /**
  * Exchanger facade. (API, Static, ThreadSafe)
+ * 对于上层来说，Exchange 层的入口是 Exchangers 这个门面类，
+ * 其中提供了多个 bind() 以及 connect() 方法的重载，
+ * 这些重载方法最终会通过 SPI 机制，获取 Exchanger 接口的扩展实现，
+ * 这个流程与第 17 课时介绍的 Transport 层的入口—— Transporters 门面类相同。
  */
 public class Exchangers {
 

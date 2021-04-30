@@ -66,6 +66,10 @@ public class ConfigurationUtils {
         return ApplicationModel.getEnvironment().getConfiguration();
     }
 
+    /**
+     * 返回的阻塞时长默认是 10 秒，我们可以通过 dubbo.service.shutdown.wait 或是 dubbo.service.shutdown.wait.seconds 进行配置
+     * @return
+     */
     // FIXME
     @SuppressWarnings("deprecation")
     public static int getServerShutdownTimeout() {
