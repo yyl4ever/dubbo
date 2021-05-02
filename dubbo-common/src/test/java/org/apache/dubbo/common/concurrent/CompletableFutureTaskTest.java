@@ -44,6 +44,8 @@ public class CompletableFutureTaskTest {
     public void testCreate() throws InterruptedException {
 
         final CountDownLatch countDownLatch = new CountDownLatch(1);
+        // 因为 CompletableFuture 实现了 CompletionStage 和 Future 接口，所以它还是可以像以前一样通过 get() 阻塞或者 isDone() 方法轮询的方式获得结果，这就保证了同步调用依旧可用。当然，在实际工作中，不是很建议用 get() 这样阻塞的方式来获取结果，因为这样就丢失了异步操作带来的性能提升。
+        // 另外，CompletableFuture 提供了良好的回调方法，例如，whenComplete()、whenCompleteAsync() 等方法都可以在逻辑完成后，执行该方法中添加的 action 逻辑，实现回调的逻辑。同时，CompletableFuture 很好地支持了 Future 间的相互协调或组合，例如，thenApply()、thenApplyAsync() 等方法。
         CompletableFuture<Boolean> completableFuture = CompletableFuture.supplyAsync(() -> {
             countDownLatch.countDown();
             return true;

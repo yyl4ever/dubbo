@@ -33,6 +33,11 @@ public class DemoServiceImpl implements DemoService {
         return "Hello " + name + ", response from provider: " + RpcContext.getContext().getLocalAddress();
     }
 
+    /**
+     * 正是由于 CompletableFuture 的增强，我们可以更加流畅地使用回调，不必因为等待一个响应而阻塞着调用线程，而是通过前面介绍的方法告诉 CompletableFuture 完成当前逻辑之后，就去执行某个特定的函数。
+     * @param name
+     * @return
+     */
     @Override
     public CompletableFuture<String> sayHelloAsync(String name) {
         return null;

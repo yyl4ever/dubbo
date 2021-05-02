@@ -29,6 +29,9 @@ import java.util.concurrent.ConcurrentMap;
 public abstract class ListenableFilter implements Filter {
 
     protected Listener listener = null;
+    /**
+     * 记录一次请求需要触发的监听器
+     */
     protected final ConcurrentMap<Invocation, Listener> listeners = new ConcurrentHashMap<>();
 
     public Listener listener() {

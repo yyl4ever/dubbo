@@ -193,6 +193,7 @@ public abstract class AbstractInvoker<T> implements Invoker<T> {
         } catch (Throwable e) {
             asyncResult = AsyncRpcResult.newDefaultAsyncResult(null, e, invocation);
         }
+        // 这里拿到的其实就是 AsyncRpcResult 中 responseFuture
         RpcContext.getContext().setFuture(new FutureAdapter(asyncResult.getResponseFuture()));
         return asyncResult;
     }

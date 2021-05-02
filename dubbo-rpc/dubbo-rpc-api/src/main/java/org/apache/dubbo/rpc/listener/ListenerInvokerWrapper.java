@@ -30,6 +30,7 @@ import java.util.List;
 
 /**
  * ListenerInvoker
+ * ListenerInvokerWrapper 是 Invoker 的装饰器
  */
 public class ListenerInvokerWrapper<T> implements Invoker<T> {
 
@@ -43,12 +44,12 @@ public class ListenerInvokerWrapper<T> implements Invoker<T> {
         if (invoker == null) {
             throw new IllegalArgumentException("invoker == null");
         }
-        this.invoker = invoker;
-        this.listeners = listeners;
+        this.invoker = invoker;// 底层被修饰的Invoker对象
+        this.listeners = listeners;// 监听器集合
         if (CollectionUtils.isNotEmpty(listeners)) {
             for (InvokerListener listener : listeners) {
                 if (listener != null) {
-                    try {
+                    try {// 在服务引用过程中触发全部InvokerListener监听器
                         listener.referred(invoker);
                     } catch (Throwable t) {
                         logger.error(t.getMessage(), t);
@@ -86,9 +87,9 @@ public class ListenerInvokerWrapper<T> implements Invoker<T> {
     @Override
     public void destroy() {
         try {
-            invoker.destroy();
+            invoker.destroy();//首先会调用被修饰 Invoker 对象的 destroy() 方法
         } finally {
-            if (CollectionUtils.isNotEmpty(listeners)) {
+            if (CollectionUtils.isNotEmpty(listeners)) {//循环调用全部 InvokerListener 的 destroyed() 方法，通知它们该 Invoker 被销毁的事件
                 for (InvokerListener listener : listeners) {
                     if (listener != null) {
                         try {

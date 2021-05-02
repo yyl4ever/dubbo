@@ -118,11 +118,14 @@ public class DubboInvoker<T> extends AbstractInvoker<T> {
                 // ThreadlessExecutor的原理前面已经分析过了，这里不再赘述；
                 // 对于异步请求，则会使用共享的线程池，ExecutorRepository 接口的相关设计和实现在前面已经详细分析过了，这里不再重复。
                 ExecutorService executor = getCallbackExecutor(getUrl(), inv);
+                // SYNC 模式，阻塞等待服务端返回响应
                 // 使用上面选出的ExchangeClient执行request()方法，将请求发送出去
                 // (request() 方法会相应地创建 DefaultFuture 对象以及检测超时的定时任务，
                 // 而 send() 方法则不会创建这些东西，它是直接将 Invocation 包装成 oneway 类型的 Request 发送出去。)
                 CompletableFuture<AppResponse> appResponseFuture =
-                        currentClient.request(inv, timeout, executor).thenApply(obj -> (AppResponse) obj);
+                        currentClient.request(inv, timeout, executor)
+                                // 回调，AppResponse:服务端返回的具体响应
+                                .thenApply(obj -> (AppResponse) obj);
                 // save for 2.6.x compatibility, for example, TraceFilter in Zipkin uses com.alibaba.xxx.FutureAdapter
                 FutureContext.getContext().setCompatibleFuture(appResponseFuture);
                 // 这里将AppResponse封装成AsyncRpcResult返回

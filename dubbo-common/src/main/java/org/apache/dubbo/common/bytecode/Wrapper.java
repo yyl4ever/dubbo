@@ -34,6 +34,9 @@ import java.util.regex.Matcher;
 
 /**
  * Wrapper.
+ * 对 Java 类的一种包装。
+ * Wrapper 会从 Java 类中的字段和方法抽象出相应 propertyName 和 methodName，
+ * 在需要调用一个字段或方法的时候，会根据传入的方法名和参数进行匹配，找到对应的字段和方法进行调用。
  */
 public abstract class Wrapper {
     private static final Map<Class<?>, Wrapper> WRAPPER_MAP = new ConcurrentHashMap<Class<?>, Wrapper>(); //class wrapper map
@@ -99,11 +102,12 @@ public abstract class Wrapper {
 
     /**
      * get wrapper.
-     *
+     * 根据不同的 Java 对象，使用 Javassist 生成一个相应的 Wrapper 实现对象。
      * @param c Class instance.
      * @return Wrapper instance(not null).
      */
     public static Wrapper getWrapper(Class<?> c) {
+        // 首先检测该 Java 类是否实现了 DC 这个标识接口
         while (ClassGenerator.isDynamicClass(c)) // can not wrapper on dynamic class.
         {
             c = c.getSuperclass();
@@ -112,10 +116,17 @@ public abstract class Wrapper {
         if (c == Object.class) {
             return OBJECT_WRAPPER;
         }
-
+/**
+ * 检测 WRAPPER_MAP 集合（Map<Class<?>, Wrapper> 类型）中是否缓存了对应的 Wrapper 对象，如果已缓存则直接返回，如果未缓存则调用 makeWrapper() 方法动态生成 Wrapper 实现类，以及相应的实例对象，并写入缓存中。
+ */
         return WRAPPER_MAP.computeIfAbsent(c, key -> makeWrapper(key));
     }
 
+    /**
+     * 遍历传入的 Class 对象的所有 public 字段和 public 方法，构建组装 Wrapper 实现类需要的 Java 代码。
+     * @param c
+     * @return
+     */
     private static Wrapper makeWrapper(Class<?> c) {
         if (c.isPrimitive()) {
             throw new IllegalArgumentException("Can not create wrapper for primitive type: " + c);
@@ -123,7 +134,7 @@ public abstract class Wrapper {
 
         String name = c.getName();
         ClassLoader cl = ClassUtils.getClassLoader(c);
-
+        // public 字段会构造相应的 getPropertyValue() 方法和 setPropertyValue() 方法
         StringBuilder c1 = new StringBuilder("public void setPropertyValue(Object o, String n, Object v){ ");
         StringBuilder c2 = new StringBuilder("public Object getPropertyValue(Object o, String n){ ");
         StringBuilder c3 = new StringBuilder("public Object invokeMethod(Object o, String n, Class[] p, Object[] v) throws " + InvocationTargetException.class.getName() + "{ ");
@@ -151,6 +162,7 @@ public abstract class Wrapper {
         }
 
         Method[] methods = c.getMethods();
+        // 处理 public 方法，这些 public 方法会添加到 invokeMethod 方法中。
         // get all public method.
         boolean hasMethod = hasMethods(methods);
         if (hasMethod) {

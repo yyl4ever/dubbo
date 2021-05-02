@@ -37,6 +37,7 @@ import static org.apache.dubbo.common.constants.CommonConstants.INVOKER_LISTENER
 
 /**
  * ListenerProtocol
+ * ProtocolListenerWrapper 本身是 Protocol 接口的装饰器
  */
 public class ProtocolListenerWrapper implements Protocol {
 
@@ -59,6 +60,7 @@ public class ProtocolListenerWrapper implements Protocol {
         if (UrlUtils.isRegistry(invoker.getUrl())) {
             return protocol.export(invoker);
         }
+        // 在原有 Invoker 基础上封装一层 ListenerExporterWrapper
         return new ListenerExporterWrapper<T>(protocol.export(invoker),
                 Collections.unmodifiableList(ExtensionLoader.getExtensionLoader(ExporterListener.class)
                         .getActivateExtension(invoker.getUrl(), EXPORTER_LISTENER_KEY)));

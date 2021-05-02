@@ -49,10 +49,19 @@ public class AppResponse implements Result {
 
     private static final long serialVersionUID = -6925924956850004727L;
 
+    /**
+     * 服务端返回的结果值，如 Provider 端 DemoServiceImpl 返回的 “Hello Dubbo xxx” 这一串字符串。
+     */
     private Object result;
 
+    /**
+     * 服务端返回的异常信息
+     */
     private Throwable exception;
 
+    /**
+     * 服务端返回的附加信息
+     */
     private Map<String, Object> attachments = new HashMap<>();
 
     public AppResponse() {
@@ -68,7 +77,7 @@ public class AppResponse implements Result {
 
     @Override
     public Object recreate() throws Throwable {
-        if (exception != null) {
+        if (exception != null) { // 存在异常则直接抛出异常
             // fix issue#619
             try {
                 // get Throwable class
@@ -88,7 +97,7 @@ public class AppResponse implements Result {
             }
             throw exception;
         }
-        return result;
+        return result;// 正常返回无异常时，直接返回result
     }
 
     @Override

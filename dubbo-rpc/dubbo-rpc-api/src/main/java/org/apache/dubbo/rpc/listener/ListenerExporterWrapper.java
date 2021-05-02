@@ -46,7 +46,7 @@ public class ListenerExporterWrapper<T> implements Exporter<T> {
             RuntimeException exception = null;
             for (ExporterListener listener : listeners) {
                 if (listener != null) {
-                    try {
+                    try {//循环调用全部 ExporterListener 的 exported() 方法，通知其服务暴露的事件
                         listener.exported(this);
                     } catch (RuntimeException t) {
                         logger.error(t.getMessage(), t);

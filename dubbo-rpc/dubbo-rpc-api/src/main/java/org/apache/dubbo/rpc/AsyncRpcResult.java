@@ -45,6 +45,7 @@ import static org.apache.dubbo.common.utils.ReflectUtils.defaultReturn;
  * AsyncRpcResult does not contain any concrete value (except the underlying value bring by CompletableFuture), consider it as a status transfer node.
  * {@link #getValue()} and {@link #getException()} are all inherited from {@link Result} interface, implementing them are mainly
  * for compatibility consideration. Because many legacy {@link Filter} implementation are most possibly to call getValue directly.
+ * 表示的是一个异步的、未完成的 RPC 调用，其中会记录对应 RPC 调用的信息（例如，关联的 RpcContext 和 Invocation 对象）
  */
 public class AsyncRpcResult implements Result {
     private static final Logger logger = LoggerFactory.getLogger(AsyncRpcResult.class);
@@ -55,8 +56,13 @@ public class AsyncRpcResult implements Result {
      */
     private RpcContext storedContext;
     private RpcContext storedServerContext;
+    /**
+     * 此次 RPC 调用关联的线程池
+     */
     private Executor executor;
-
+    /**
+     * 此次 RPC 调用关联的 Invocation 对象。
+     */
     private Invocation invocation;
 
     private CompletableFuture<AppResponse> responseFuture;
@@ -142,8 +148,8 @@ public class AsyncRpcResult implements Result {
 
     public Result getAppResponse() {
         try {
-            if (responseFuture.isDone()) {
-                return responseFuture.get();
+            if (responseFuture.isDone()) {// 检测responseFuture是否已完成
+                return responseFuture.get();// 获取AppResponse
             }
         } catch (Exception e) {
             // This should not happen in normal request process;
@@ -151,7 +157,7 @@ public class AsyncRpcResult implements Result {
             throw new RpcException(e);
         }
 
-        return createDefaultValue(invocation);
+        return createDefaultValue(invocation);// 根据调用方法的返回值，生成默认值
     }
 
     /**
@@ -166,9 +172,11 @@ public class AsyncRpcResult implements Result {
     @Override
     public Result get() throws InterruptedException, ExecutionException {
         if (executor != null && executor instanceof ThreadlessExecutor) {
+            // 对于同步请求来说，会先调用 ThreadlessExecutor.waitAndDrain() 方法阻塞等待响应返回
             ThreadlessExecutor threadlessExecutor = (ThreadlessExecutor) executor;
             threadlessExecutor.waitAndDrain();
         }
+        // 非ThreadlessExecutor线程池的场景中，则直接调用Future(最底层是DefaultFuture)的get()方法阻塞
         return responseFuture.get();
     }
 
@@ -184,6 +192,7 @@ public class AsyncRpcResult implements Result {
     @Override
     public Object recreate() throws Throwable {
         RpcInvocation rpcInvocation = (RpcInvocation) invocation;
+        // 如果服务接口定义的返回参数是 CompletableFuture，则属于 FUTURE 模式，FUTURE 模式也属于 Dubbo 提供的一种异步调用方式，只不过是服务端异步。
         if (InvokeMode.FUTURE == rpcInvocation.getInvokeMode()) {
             return RpcContext.getContext().getFuture();
         }
@@ -192,7 +201,9 @@ public class AsyncRpcResult implements Result {
     }
 
     public Result whenCompleteWithContext(BiConsumer<Result, Throwable> fn) {
+        // 为 AsyncRpcResult 添加回调方法
         this.responseFuture = this.responseFuture.whenComplete((v, t) -> {
+            // 这里的 beforeContext 首先会将当前线程的 RpcContext 记录到 tmpContext 中，然后将构造函数中存储的 RpcContext 设置到当前线程中，为后面的回调执行做准备；而 afterContext 则会恢复线程原有的 RpcContext。
             beforeContext.accept(v, t);
             fn.accept(v, t);
             afterContext.accept(v, t);
@@ -287,13 +298,16 @@ public class AsyncRpcResult implements Result {
 
     private RpcContext tmpServerContext;
     private BiConsumer<Result, Throwable> beforeContext = (appResponse, t) -> {
+        // // 将当前线程的 RpcContext 记录到 tmpContext 中
         tmpContext = RpcContext.getContext();
         tmpServerContext = RpcContext.getServerContext();
+        // // 将构造函数中存储的 RpcContext 设置到当前线程中
         RpcContext.restoreContext(storedContext);
         RpcContext.restoreServerContext(storedServerContext);
     };
 
     private BiConsumer<Result, Throwable> afterContext = (appResponse, t) -> {
+        // // 将tmpContext中存储的RpcContext恢复到当前线程绑定的RpcContext
         RpcContext.restoreContext(tmpContext);
         RpcContext.restoreServerContext(tmpServerContext);
     };
