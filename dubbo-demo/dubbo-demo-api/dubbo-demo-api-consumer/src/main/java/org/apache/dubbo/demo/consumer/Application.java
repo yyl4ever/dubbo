@@ -65,6 +65,7 @@ public class Application {
         reference.setApplication(new ApplicationConfig("dubbo-demo-api-consumer"));
         reference.setRegistry(new RegistryConfig("zookeeper://127.0.0.1:2181"));
         reference.setInterface(DemoService.class);
+        // yyl attention!!! 这个代理对象内部封装了所有的通讯细节，从这个地方进去看
         DemoService service = reference.get();
         String message = service.sayHello("dubbo");
         System.out.println(message);

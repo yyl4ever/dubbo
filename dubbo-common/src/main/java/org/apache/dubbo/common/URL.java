@@ -87,6 +87,7 @@ import static org.apache.dubbo.common.constants.CommonConstants.VERSION_KEY;
  *
  * @see java.net.URL
  * @see java.net.URI
+ * 你要调用一个服务(dubbo中就是一个接口），你就会取请求一个URL
  */
 public /*final**/
 class URL implements Serializable {

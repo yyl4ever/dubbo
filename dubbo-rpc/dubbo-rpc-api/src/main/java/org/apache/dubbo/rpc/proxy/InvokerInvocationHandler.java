@@ -61,11 +61,12 @@ public class InvokerInvocationHandler implements InvocationHandler {
         if (method.getDeclaringClass() == Object.class) {
             return method.invoke(invoker, args);
         }
+        // 方法名
         String methodName = method.getName();
         Class<?>[] parameterTypes = method.getParameterTypes();
         if (parameterTypes.length == 0) { // 对$destroy等方法的特殊处理
             if ("toString".equals(methodName)) {
-                return invoker.toString();
+                return invoker.toString();// todo 这里的invoker可以看成本地对象？？？
             } else if ("$destroy".equals(methodName)) {
                 invoker.destroy();
                 return null;
@@ -85,7 +86,8 @@ public class InvokerInvocationHandler implements InvocationHandler {
             rpcInvocation.put(Constants.METHOD_MODEL, consumerModel.getMethodModel(method));
         }
         // 调用invoke()方法发起远程调用，拿到AsyncRpcResult之后，调用recreate()方法获取响应结果(或是Future)
-
+        // invoke方法返回服务端响应结果
+        // org.apache.dubbo.rpc.protocol.dubbo.DubboInvoker.doInvoke
         return invoker.invoke(rpcInvocation).recreate();
     }
 }
