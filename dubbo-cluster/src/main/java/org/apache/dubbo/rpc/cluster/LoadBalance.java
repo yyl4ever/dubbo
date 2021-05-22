@@ -32,6 +32,7 @@ import java.util.List;
  * <a href="http://en.wikipedia.org/wiki/Load_balancing_(computing)">Load-Balancing</a>
  *
  * @see org.apache.dubbo.rpc.cluster.Cluster#join(Directory)
+ * 入口
  */
 @SPI(RandomLoadBalance.NAME)
 public interface LoadBalance {
@@ -39,7 +40,7 @@ public interface LoadBalance {
     /**
      * select one invoker in list.
      *
-     * @param invokers   invokers.
+     * @param invokers   invokers. 有多少服务能够被调用
      * @param url        refer url
      * @param invocation invocation.
      * @return selected invoker.

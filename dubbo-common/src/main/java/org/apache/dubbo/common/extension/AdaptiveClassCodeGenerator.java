@@ -85,6 +85,7 @@ public class AdaptiveClassCodeGenerator {
 
     /**
      * generate and return class code
+     * 方法体是怎么动态生成的？？
      */
     public String generate() {
         // no need to generate adaptive class since there's no adaptive method found.
@@ -158,6 +159,8 @@ public class AdaptiveClassCodeGenerator {
     private String generateMethod(Method method) {
         String methodReturnType = method.getReturnType().getCanonicalName();
         String methodName = method.getName();
+        // 主要就是为了生成这一句代码
+        // org.apache.dubbo.rpc.Protocol extension = (org.apache.dubbo.rpc.Protocol)ExtensionLoader.getExtensionLoader(org.apache.dubbo.rpc.Protocol.class).getExtension(extName);
         String methodContent = generateMethodContent(method);
         String methodArgs = generateMethodArguments(method);
         String methodThrows = generateMethodThrows(method);

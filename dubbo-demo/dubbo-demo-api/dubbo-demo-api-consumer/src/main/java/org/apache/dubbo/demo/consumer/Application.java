@@ -50,7 +50,7 @@ public class Application {
                 .start();
         // 获取DemoService实例并调用其方法
         DemoService demoService = ReferenceConfigCache.getCache().get(reference);
-        String message = demoService.sayHello("dubbo");
+        String message = demoService.sayHello("dubbo");//org.apache.dubbo.rpc.proxy.InvokerInvocationHandler.invoke
         System.out.println(message);
 
         // generic invoke

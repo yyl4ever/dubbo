@@ -20,6 +20,9 @@ import org.apache.dubbo.common.logger.Logger;
 
 public class Log4j2Logger implements Logger {
 
+    /**
+     * // 维护了一个log4j日志框架中的Logger对象，实现了适配器的功能
+     */
     private final org.apache.logging.log4j.Logger logger;
 
     public Log4j2Logger(org.apache.logging.log4j.Logger logger) {
@@ -58,6 +61,7 @@ public class Log4j2Logger implements Logger {
 
     @Override
     public void info(String msg) {
+        // 直接调用log4j日志框架的Logger写入日志
         logger.info(msg);
     }
 

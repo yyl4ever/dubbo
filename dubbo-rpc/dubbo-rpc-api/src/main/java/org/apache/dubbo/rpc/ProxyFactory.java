@@ -34,7 +34,7 @@ public interface ProxyFactory {
      * @param invoker
      * @return proxy
      */
-    // 为传入的Invoker对象创建代理对象
+    // 为传入的Invoker对象创建代理对象 -- Adaptive 在方法上，会动态生成类
     @Adaptive({PROXY_KEY})
     <T> T getProxy(Invoker<T> invoker) throws RpcException;
 

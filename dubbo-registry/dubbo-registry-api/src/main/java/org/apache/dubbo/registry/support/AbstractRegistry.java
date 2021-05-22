@@ -110,6 +110,8 @@ public abstract class AbstractRegistry implements Registry {
     // 注册数据的版本号，每次写入 file 文件时，都是全覆盖写入，而不是修改文件，所以需要版本控制，防止旧数据覆盖新数据。
     private final AtomicLong lastCacheChanged = new AtomicLong();
     private final AtomicInteger savePropertiesRetryTimes = new AtomicInteger();
+
+    // 下面的这几个集合进行分类管理
     // 这个比较简单，它是注册的 URL 集合。
     private final Set<URL> registered = new ConcurrentHashSet<>();
     // 表示订阅 URL 的监听器集合，其中 Key 是被监听的 URL， Value 是相应的监听器集合。

@@ -34,10 +34,15 @@ import static org.apache.dubbo.rpc.Constants.DEFAULT_TPS_LIMIT_INTERVAL;
  */
 public class DefaultTPSLimiter implements TPSLimiter {
 
+    /**
+     * 对于要限流的请求，会从 stats 集合中获取（或创建）相应的 StatItem 对象
+     * ，然后调用其 isAllowable() 方法判断是否被限流
+     */
     private final ConcurrentMap<String, StatItem> stats = new ConcurrentHashMap<String, StatItem>();
 
     @Override
     public boolean isAllowable(URL url, Invocation invocation) {
+        // 读取 tps 参数值，默认为 -1，即没有限流
         int rate = url.getParameter(TPS_LIMIT_RATE_KEY, -1);
         long interval = url.getParameter(TPS_LIMIT_INTERVAL_KEY, DEFAULT_TPS_LIMIT_INTERVAL);
         String serviceKey = url.getServiceKey();
@@ -55,6 +60,7 @@ public class DefaultTPSLimiter implements TPSLimiter {
             }
             return statItem.isAllowable();
         } else {
+            // 不需要限流
             StatItem statItem = stats.get(serviceKey);
             if (statItem != null) {
                 stats.remove(serviceKey);

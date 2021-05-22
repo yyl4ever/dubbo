@@ -32,12 +32,21 @@ import java.util.stream.Collectors;
  */
 public class RouterChain<T> {
 
+    /**
+     * 当前 RouterChain 对象要过滤的 Invoker 集合。
+     */
     // full list of addresses from registry, classified by method name.
     private List<Invoker<T>> invokers = Collections.emptyList();
 
+    /**
+     * 当前 RouterChain 中真正要使用的 Router 集合，其中不仅包括了上面 builtinRouters 集合中全部的 Router 对象，还包括通过 addRouters() 方法添加的 Router 对象。
+     */
     // containing all routers, reconstruct every time 'route://' urls change.
     private volatile List<Router> routers = Collections.emptyList();
 
+    /**
+     * 当前 RouterChain 激活的内置 Router 集合
+     */
     // Fixed router instances: ConfigConditionRouter, TagRouter, e.g., the rule for each instance may change but the
     // instance will never delete or recreate.
     private List<Router> builtinRouters = Collections.emptyList();
@@ -47,13 +56,16 @@ public class RouterChain<T> {
     }
 
     private RouterChain(URL url) {
+        // 在传入的 URL 参数中查找 router 参数值，并根据该值获取确定激活的 RouterFactory
         List<RouterFactory> extensionFactories = ExtensionLoader.getExtensionLoader(RouterFactory.class)
                 .getActivateExtension(url, "router");
 
+        // 遍历所有RouterFactory，调用其getRouter()方法创建相应的Router对象
         List<Router> routers = extensionFactories.stream()
                 .map(factory -> factory.getRouter(url))
                 .collect(Collectors.toList());
 
+        // 初始化buildinRouters字段以及routers字段
         initWithRouters(routers);
     }
 
@@ -64,6 +76,7 @@ public class RouterChain<T> {
     public void initWithRouters(List<Router> builtinRouters) {
         this.builtinRouters = builtinRouters;
         this.routers = new ArrayList<>(builtinRouters);
+        // 这里会对routers集合进行排序
         this.sort();
     }
 
@@ -77,8 +90,11 @@ public class RouterChain<T> {
      */
     public void addRouters(List<Router> routers) {
         List<Router> newRouters = new ArrayList<>();
+        // 添加builtinRouters集合
         newRouters.addAll(builtinRouters);
+        // 添加传入的Router集合
         newRouters.addAll(routers);
+        // 重新排序
         CollectionUtils.sort(newRouters);
         this.routers = newRouters;
     }
@@ -95,7 +111,9 @@ public class RouterChain<T> {
      */
     public List<Invoker<T>> route(URL url, Invocation invocation) {
         List<Invoker<T>> finalInvokers = invokers;
+        // 遍历 routers 字段，逐个调用 Router 对象的 route() 方法，对 invokers 集合进行过滤
         for (Router router : routers) {
+            // yyl 不断地通过路由条件去筛选 invokers
             finalInvokers = router.route(finalInvokers, url, invocation);
         }
         return finalInvokers;

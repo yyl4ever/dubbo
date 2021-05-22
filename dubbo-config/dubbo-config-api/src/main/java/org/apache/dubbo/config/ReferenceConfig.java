@@ -195,7 +195,7 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
 
         checkStubAndLocal(interfaceClass);
         ConfigValidationUtils.checkMock(interfaceClass, this);
-// 放参数的map
+        // 放参数的map
         Map<String, String> map = new HashMap<String, String>();
         map.put(SIDE_KEY, CONSUMER_SIDE);
 
@@ -255,7 +255,8 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
         map.put(REGISTER_IP_KEY, hostToRegistry);
 
         serviceMetadata.getAttachments().putAll(map);
-// 注意看 ref 是怎么产生的
+        // 注意看 ref 是怎么产生的
+        // 得到接口的代理实现
         ref = createProxy(map);
 
         serviceMetadata.setTarget(ref);
@@ -303,6 +304,7 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
                 // if protocols not injvm checkRegistry
                 if (!LOCAL_PROTOCOL.equalsIgnoreCase(getProtocol())) {
                     checkRegistry();
+                    // 可能有多个注册中心
                     List<URL> us = ConfigValidationUtils.loadRegistries(this, false);
                     if (CollectionUtils.isNotEmpty(us)) {
                         for (URL u : us) {
@@ -320,7 +322,10 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
             }
 
             if (urls.size() == 1) {
-                invoker = REF_PROTOCOL.refer(interfaceClass, urls.get(0));
+                // todo debug
+                // 消费者也会注册到 zk 上
+                // org.apache.dubbo.registry.integration.RegistryProtocol.refer
+                invoker = REF_PROTOCOL.refer(interfaceClass, urls.get(0));//org.apache.dubbo.rpc.protocol.ProtocolListenerWrapper.refer
             } else {
                 List<Invoker<?>> invokers = new ArrayList<Invoker<?>>();
                 URL registryURL = null;
@@ -333,6 +338,7 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
                 if (registryURL != null) { // registry url is available
                     // for multi-subscription scenario, use 'zone-aware' policy by default
                     URL u = registryURL.addParameterIfAbsent(CLUSTER_KEY, ZoneAwareCluster.NAME);
+                    // 从多个 invokers 获取一个
                     // The invoker wrap relation would be like: ZoneAwareClusterInvoker(StaticDirectory) -> FailoverClusterInvoker(RegistryDirectory, routing happens here) -> Invoker
                     invoker = CLUSTER.join(new StaticDirectory(u, invokers));
                 } else { // not a registry url, must be direct invoke.
@@ -367,6 +373,7 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
             URL consumerURL = new URL(CONSUMER_PROTOCOL, map.remove(REGISTER_IP_KEY), 0, map.get(INTERFACE_KEY), map);
             metadataService.publishServiceDefinition(consumerURL);
         }
+        // 创建接口的实现类 -- org.apache.dubbo.rpc.proxy.javassist.JavassistProxyFactory
         // create service proxy -- 关注这个方法的返回值怎么来的
         return (T) PROXY_FACTORY.getProxy(invoker, ProtocolUtils.isGeneric(generic));
     }

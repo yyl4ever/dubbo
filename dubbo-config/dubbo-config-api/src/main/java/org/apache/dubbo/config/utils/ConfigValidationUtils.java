@@ -187,10 +187,11 @@ public class ConfigValidationUtils {
                         map.put(PROTOCOL_KEY, DUBBO_PROTOCOL);
                     }
                     List<URL> urls = UrlUtils.parseURLs(address, map);
-
+                    // 支持多注册中心
                     for (URL url : urls) {
 
                         url = URLBuilder.from(url)
+                                // 以 registry 开头 -- 协议头的转换
                                 .addParameter(REGISTRY_KEY, url.getProtocol())
                                 .setProtocol(extractRegistryType(url))
                                 .build();

@@ -81,6 +81,7 @@ public class LoggerFactory {
 
     public static void setLoggerAdapter(String loggerAdapter) {
         if (loggerAdapter != null && loggerAdapter.length() > 0) {
+            // SPI 机制初始化
             setLoggerAdapter(ExtensionLoader.getExtensionLoader(LoggerAdapter.class).getExtension(loggerAdapter));
         }
     }
@@ -95,6 +96,7 @@ public class LoggerFactory {
             Logger logger = loggerAdapter.getLogger(LoggerFactory.class.getName());
             logger.info("using logger: " + loggerAdapter.getClass().getName());
             LoggerFactory.LOGGER_ADAPTER = loggerAdapter;
+            // todo 为啥这里要遍历？
             for (Map.Entry<String, FailsafeLogger> entry : LOGGERS.entrySet()) {
                 entry.getValue().setLogger(LOGGER_ADAPTER.getLogger(entry.getKey()));
             }

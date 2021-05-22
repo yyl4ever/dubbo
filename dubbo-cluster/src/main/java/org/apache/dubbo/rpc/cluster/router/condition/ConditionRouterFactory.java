@@ -26,6 +26,9 @@ import org.apache.dubbo.rpc.cluster.RouterFactory;
  */
 public class ConditionRouterFactory implements RouterFactory {
 
+    /**
+     * 扩展名
+     */
     public static final String NAME = "condition";
 
     @Override

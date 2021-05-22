@@ -39,6 +39,7 @@ import static org.apache.dubbo.common.constants.CommonConstants.TIME_COUNTDOWN_K
  *
  * @see org.apache.dubbo.rpc.Filter
  * @see RpcContext
+ * 在当前的 RpcContext 中记录本地调用的一些状态信息（会记录到 LOCAL 对应的 RpcContext 中），例如，调用相关的 Invoker、Invocation 以及调用的本地地址、远端地址信息
  */
 @Activate(group = CONSUMER, order = -10000)
 public class ConsumerContextFilter implements Filter {
@@ -46,16 +47,19 @@ public class ConsumerContextFilter implements Filter {
     @Override
     public Result invoke(Invoker<?> invoker, Invocation invocation) throws RpcException {
         RpcContext context = RpcContext.getContext();
+        // 记录Invoker
         context.setInvoker(invoker)
                 .setInvocation(invocation)
+                // 记录本地地址以及远端地址
                 .setLocalAddress(NetUtils.getLocalHost(), 0)
                 .setRemoteAddress(invoker.getUrl().getHost(), invoker.getUrl().getPort())
+                // 记录远端应用名称等信息
                 .setRemoteApplicationName(invoker.getUrl().getParameter(REMOTE_APPLICATION_KEY))
                 .setAttachment(REMOTE_APPLICATION_KEY, invoker.getUrl().getParameter(APPLICATION_KEY));
         if (invocation instanceof RpcInvocation) {
             ((RpcInvocation) invocation).setInvoker(invoker);
         }
-
+        // 检测当前调用是否超时
         // pass default timeout set by end user (ReferenceConfig)
         Object countDown = context.get(TIME_COUNTDOWN_KEY);
         if (countDown != null) {

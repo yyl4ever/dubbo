@@ -75,20 +75,27 @@ public class HttpProtocol extends AbstractProxyProtocol {
             this.cors = cors;
         }
 
+        /**
+         * 将请求委托给 skeletonMap 集合中记录的 JsonRpcServer 对象进行处理
+         * @param request  request.
+         * @param response response.
+         * @throws ServletException
+         */
         @Override
         public void handle(HttpServletRequest request, HttpServletResponse response)
                 throws ServletException {
             String uri = request.getRequestURI();
             JsonRpcServer skeleton = skeletonMap.get(uri);
             if (cors) {
+                // 处理跨域问题
                 response.setHeader(ACCESS_CONTROL_ALLOW_ORIGIN_HEADER, "*");
                 response.setHeader(ACCESS_CONTROL_ALLOW_METHODS_HEADER, "POST");
                 response.setHeader(ACCESS_CONTROL_ALLOW_HEADERS_HEADER, "*");
             }
             if (request.getMethod().equalsIgnoreCase("OPTIONS")) {
-                response.setStatus(200);
+                response.setStatus(200);// 处理OPTIONS请求
             } else if (request.getMethod().equalsIgnoreCase("POST")) {
-
+                // 只处理POST请求
                 RpcContext.getContext().setRemoteAddress(request.getRemoteAddr(), request.getRemotePort());
                 try {
                     skeleton.handle(request.getInputStream(), response.getOutputStream());
@@ -96,32 +103,56 @@ public class HttpProtocol extends AbstractProxyProtocol {
                     throw new ServletException(e);
                 }
             } else {
+                // 其他Method类型的请求，例如，GET请求，直接返回500
                 response.setStatus(500);
             }
         }
 
     }
 
+    /**
+     * 服务暴露的相关实现
+     * 启动一个 RemotingServer。为了适配各种 HTTP 服务器，例如，Tomcat、Jetty 等，Dubbo 在 Transporter 层抽象出了一个 HttpServer 的接口。
+     * @param impl
+     * @param type
+     * @param url
+     * @param <T>
+     * @return
+     * @throws RpcException
+     */
     @Override
     protected <T> Runnable doExport(final T impl, Class<T> type, URL url) throws RpcException {
         String addr = getAddr(url);
+        // 先查询serverMap缓存
         ProtocolServer protocolServer = serverMap.get(addr);
         if (protocolServer == null) {
+            // 通过 HttpBinder 创建 HttpServer 对象
             RemotingServer remotingServer = httpBinder.bind(url, new InternalHandler(url.getParameter("cors", false)));
+            // 记录到 serverMap 中用来接收 HTTP 请求
             serverMap.put(addr, new ProxyProtocolServer(remotingServer));
         }
+        // 创建JsonRpcServer对象，并将URL与JsonRpcServer的映射关系记录到skeletonMap集合中
         final String path = url.getAbsolutePath();
         final String genericPath = path + "/" + GENERIC_KEY;
         JsonRpcServer skeleton = new JsonRpcServer(impl, type);
         JsonRpcServer genericServer = new JsonRpcServer(impl, GenericService.class);
         skeletonMap.put(path, skeleton);
         skeletonMap.put(genericPath, genericServer);
+        // 返回 Runnable 回调，在 Exporter 中的 unexport() 方法中执行
         return () -> {
             skeletonMap.remove(path);
             skeletonMap.remove(genericPath);
         };
     }
 
+    /**
+     * 引用服务的相关实现
+     * @param serviceType
+     * @param url
+     * @param <T>
+     * @return
+     * @throws RpcException
+     */
     @SuppressWarnings("unchecked")
     @Override
     protected <T> T doRefer(final Class<T> serviceType, URL url) throws RpcException {
@@ -143,8 +174,9 @@ public class HttpProtocol extends AbstractProxyProtocol {
 
         jsonRpcProxyFactoryBean.setServiceUrl(key);
         jsonRpcProxyFactoryBean.setServiceInterface(serviceType);
-
+        // 创建 JsonRpcHttpClient 对象，用于后续发送json-rpc请求
         jsonProxyFactoryBean.afterPropertiesSet();
+        // 返回的是serviceType类型的代理对象
         return (T) jsonProxyFactoryBean.getObject();
     }
 

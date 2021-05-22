@@ -160,7 +160,7 @@ public class ProtocolFilterWrapper implements Protocol {
     public <T> Invoker<T> refer(Class<T> type, URL url) throws RpcException {
         if (UrlUtils.isRegistry(url)) {
             return protocol.refer(type, url);
-        }
+        }//org.apache.dubbo.rpc.protocol.dubbo.DubboProtocol.protocolBindingRefer
         return buildInvokerChain(protocol.refer(type, url), REFERENCE_FILTER_KEY, CommonConstants.CONSUMER);
     }
 

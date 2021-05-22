@@ -25,6 +25,12 @@ import java.util.concurrent.Executor;
 public interface ZookeeperClient {
 
     // 创建 ZNode 节点，还提供了创建临时 ZNode 节点的重载方法
+
+    /**
+     *
+     * @param path
+     * @param ephemeral 是否临时节点
+     */
     void create(String path, boolean ephemeral);
 
     //删除节点

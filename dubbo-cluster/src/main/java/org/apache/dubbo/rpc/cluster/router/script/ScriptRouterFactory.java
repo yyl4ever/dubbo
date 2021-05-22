@@ -34,7 +34,9 @@ import org.apache.dubbo.rpc.cluster.RouterFactory;
  *
  */
 public class ScriptRouterFactory implements RouterFactory {
-
+    /**
+     * 扩展名
+     */
     public static final String NAME = "script";
 
     @Override

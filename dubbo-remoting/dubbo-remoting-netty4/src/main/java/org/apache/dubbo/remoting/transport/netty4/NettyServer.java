@@ -82,6 +82,7 @@ public class NettyServer extends AbstractServer implements RemotingServer {
 
     /**
      * Init and start netty server
+     * 等着被连接
      *
      * @throws Throwable
      * 和启动一个 Netty 的 Server 端基本流程类似：初始化 ServerBootstrap、创建 Boss EventLoopGroup 和 Worker EventLoopGroup、
@@ -97,7 +98,7 @@ public class NettyServer extends AbstractServer implements RemotingServer {
         workerGroup = NettyEventLoopFactory.eventLoopGroup(
                 getUrl().getPositiveParameter(IO_THREADS_KEY, Constants.DEFAULT_IO_THREADS),
                 "NettyServerWorker");
-// 创建NettyServerHandler，它是一个Netty中的ChannelHandler实现，
+        // 创建NettyServerHandler，它是一个Netty中的ChannelHandler实现，
         // 不是Dubbo Remoting层的ChannelHandler接口的实现
         //第二个参数传入的是 NettyServer 这个对象，你可以追溯一下 NettyServer 的继承结构，会发现它的最顶层父类 AbstractPeer 实现了 ChannelHandler，并且将所有的方法委托给其中封装的 ChannelHandler 对象
         // 也就是说，NettyServerHandler 会将数据委托给这个 ChannelHandler

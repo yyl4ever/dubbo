@@ -53,7 +53,7 @@ public class ActivateComparator implements Comparator<Object> {
 
         if ((a1.applicableToCompare() || a2.applicableToCompare()) && inf != null) {
             ExtensionLoader<?> extensionLoader = ExtensionLoader.getExtensionLoader(inf);
-            if (a1.applicableToCompare()) {
+            if (a1.applicableToCompare()) { //what ?
                 String n2 = extensionLoader.getExtensionName(o2.getClass());
                 if (a1.isLess(n2)) {
                     return -1;

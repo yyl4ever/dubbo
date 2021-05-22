@@ -51,7 +51,7 @@ import static org.apache.dubbo.registry.Constants.REGISTRY_RETRY_PERIOD_KEY;
  * FailbackRegistry. (SPI, Prototype, ThreadSafe)
  */
 public abstract class FailbackRegistry extends AbstractRegistry {
-
+    // 可能出现网络抖动，所以要在内存中记录失败的注册URL
     /*  retry task map */
     // 失败重试集合 -- 注册失败的 URL 集合，其中 Key 是注册失败的 URL，Value 是对应的重试任务。
     private final ConcurrentMap<URL, FailedRegisteredTask> failedRegistered = new ConcurrentHashMap<URL, FailedRegisteredTask>();

@@ -170,7 +170,7 @@ public abstract class Proxy {
                     int ix = methods.size();
                     Class<?> rt = method.getReturnType();// 获取方法的返回值
                     Class<?>[] pts = method.getParameterTypes();// 获取方法的参数列表
-// 创建方法体
+                    // 创建方法体
                     StringBuilder code = new StringBuilder("Object[] args = new Object[").append(pts.length).append("];");
                     for (int j = 0; j < pts.length; j++) {
                         code.append(" args[").append(j).append("] = ($w)$").append(j + 1).append(";");
@@ -179,7 +179,7 @@ public abstract class Proxy {
                     if (!Void.TYPE.equals(rt)) {// 生成return语句
                         code.append(" return ").append(asArgument(rt, "ret")).append(";");
                     }
-// 将生成好的方法添加到ClassGenerator中缓存
+                    // 将生成好的方法添加到ClassGenerator中缓存
                     methods.add(method);
                     ccp.addMethod(method.getName(), method.getModifiers(), rt, pts, method.getExceptionTypes(), code.toString());
                 }
@@ -188,7 +188,7 @@ public abstract class Proxy {
             if (pkg == null) {
                 pkg = PACKAGE_NAME;
             }
-// 开始创建代理实例类（ProxyInstance）和代理类
+            // 开始创建代理实例类（ProxyInstance）和代理类
             // create ProxyInstance class.
             String pcn = pkg + ".proxy" + id;// 生成并设置代理类类名
             ccp.setClassName(pcn);

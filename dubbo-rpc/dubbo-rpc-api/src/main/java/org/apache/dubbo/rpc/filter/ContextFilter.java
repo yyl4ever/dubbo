@@ -53,6 +53,7 @@ import static org.apache.dubbo.rpc.Constants.TOKEN_KEY;
  * current execution thread.
  *
  * @see RpcContext
+ * ContextFilter 是 Provider 端的一个 Filter 实现，它主要用来初始化 Provider 端的 RpcContext。
  */
 @Activate(group = PROVIDER, order = -10000)
 public class ContextFilter implements Filter, Filter.Listener {
@@ -103,6 +104,7 @@ public class ContextFilter implements Filter, Filter.Listener {
             context.setRemoteApplicationName((String) context.getAttachment(REMOTE_APPLICATION_KEY));
         }
 
+        // 向RpcContext中设置Attachments
         // merged from dubbox
         // we may already added some attachments into RpcContext before this filter (e.g. in rest protocol)
         if (attachments != null) {
@@ -113,20 +115,25 @@ public class ContextFilter implements Filter, Filter.Listener {
             }
         }
 
+        // 向Invocation设置Invoker
         if (invocation instanceof RpcInvocation) {
             ((RpcInvocation) invocation).setInvoker(invoker);
         }
 
         long timeout = RpcUtils.getTimeout(invocation, -1);
+        // 设置超时时间
         if (timeout != -1) {
             context.set(TIME_COUNTDOWN_KEY, TimeoutCountDown.newCountDown(timeout, TimeUnit.MILLISECONDS));
         }
 
         try {
+            // 在整个调用过程中，需要保持当前RpcContext不被删除，这里会将remove开关关掉，这样，removeContext()方法不会删除LOCAL RpcContext了
             context.clearAfterEachInvoke(false);
             return invoker.invoke(invocation);
         } finally {
+            // 重置remove开关
             context.clearAfterEachInvoke(true);
+            // 清理RpcContext，当前线程处理下一个调用的时候，会创建新的RpcContext
             // IMPORTANT! For async scenario, we must remove context from current thread, so we always create a new RpcContext for the next invoke for the same thread.
             RpcContext.removeContext(true);
             RpcContext.removeServerContext();
@@ -135,6 +142,7 @@ public class ContextFilter implements Filter, Filter.Listener {
 
     @Override
     public void onResponse(Result appResponse, Invoker<?> invoker, Invocation invocation) {
+        // 将 SERVER_LOCAL 这个 RpcContext 中的附加信息添加到 AppResponse 的 attachments 字段中，返回给 Consumer
         // pass attachments to result
         appResponse.addObjectAttachments(RpcContext.getServerContext().getObjectAttachments());
     }

@@ -58,6 +58,7 @@ import static org.apache.dubbo.common.constants.RegistryConstants.ROUTERS_CATEGO
 /**
  * ZookeeperRegistry
  * 具体实现类，实现与 Zookeeper 等注册中心交互的逻辑
+ * 入口
  */
 public class ZookeeperRegistry extends FailbackRegistry {
 

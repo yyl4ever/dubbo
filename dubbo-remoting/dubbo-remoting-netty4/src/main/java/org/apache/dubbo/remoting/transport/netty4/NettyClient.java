@@ -114,11 +114,12 @@ public class NettyClient extends AbstractClient {
                 NettyCodecAdapter adapter = new NettyCodecAdapter(getCodec(), getUrl(), NettyClient.this);
                 // 注册ChannelHandler
                 ch.pipeline()//.addLast("logging",new LoggingHandler(LogLevel.INFO))//for debug
-                        .addLast("decoder", adapter.getDecoder())
+                        .addLast("decoder", adapter.getDecoder())// 做序列化和反序列化，用适配器模式去支持http，json
                         .addLast("encoder", adapter.getEncoder())
                         .addLast("client-idle-handler", new IdleStateHandler(heartbeatInterval, 0, 0, MILLISECONDS))
+                        // nettyClientHandler 才是正主
                         .addLast("handler", nettyClientHandler);// 将所有方法委托给 NettyClient 关联的 ChannelHandler 对象进行处理
-// 如果需要Socks5Proxy，需要添加Socks5ProxyHandler
+                // 如果需要Socks5Proxy，需要添加Socks5ProxyHandler
                 String socksProxyHost = ConfigUtils.getProperty(SOCKS_PROXY_HOST);
                 if (socksProxyHost != null) {
                     int socksProxyPort = Integer.parseInt(ConfigUtils.getProperty(SOCKS_PROXY_PORT, DEFAULT_SOCKS_PROXY_PORT));

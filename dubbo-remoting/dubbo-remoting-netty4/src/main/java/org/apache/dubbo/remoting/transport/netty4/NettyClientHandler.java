@@ -80,7 +80,9 @@ public class NettyClientHandler extends ChannelDuplexHandler {
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+        // 将netty的channel封装成dubbo自己的 channel
         NettyChannel channel = NettyChannel.getOrAddChannel(ctx.channel(), url, handler);
+        // 收发消息
         handler.received(channel, msg);
     }
 
@@ -96,6 +98,7 @@ public class NettyClientHandler extends ChannelDuplexHandler {
         promise.addListener(future -> {
             if (future.isSuccess()) {
                 // if our future is success, mark the future to sent.
+                // 收发消息
                 handler.sent(channel, msg);
                 return;
             }

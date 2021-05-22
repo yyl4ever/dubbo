@@ -70,7 +70,7 @@ public class ProtocolListenerWrapper implements Protocol {
     public <T> Invoker<T> refer(Class<T> type, URL url) throws RpcException {
         if (UrlUtils.isRegistry(url)) {
             return protocol.refer(type, url);
-        }
+        }//org.apache.dubbo.rpc.protocol.ProtocolFilterWrapper.refer
         return new ListenerInvokerWrapper<T>(protocol.refer(type, url),
                 Collections.unmodifiableList(
                         ExtensionLoader.getExtensionLoader(InvokerListener.class)

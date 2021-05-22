@@ -26,6 +26,9 @@ public final class TimeoutCountDown implements Comparable<TimeoutCountDown> {
 
   private final long timeoutInMillis;
   private final long deadlineInNanos;
+  /**
+   * 标识当前 TimeoutCountDown 关联的调用是否已超时
+   */
   private volatile boolean expired;
 
   private TimeoutCountDown(long timeout, TimeUnit unit) {

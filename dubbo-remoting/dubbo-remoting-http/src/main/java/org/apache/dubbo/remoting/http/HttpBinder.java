@@ -23,6 +23,7 @@ import org.apache.dubbo.remoting.Constants;
 
 /**
  * HttpBinder
+ * dubbo-remoting-http 模块的入口是 HttpBinder 接口，它被 @SPI 注解修饰，是一个扩展接口，有三个扩展实现，默认使用的是 JettyHttpBinder 实现
  */
 @SPI("jetty")
 public interface HttpBinder {
@@ -32,6 +33,7 @@ public interface HttpBinder {
      *
      * @param url server url.
      * @return server.
+     * 根据 URL 的 server 参数选择相应的 HttpBinder 扩展实现，不同 HttpBinder 实现返回相应的 HttpServer 实现。
      */
     @Adaptive({Constants.SERVER_KEY})
     HttpServer bind(URL url, HttpHandler handler);

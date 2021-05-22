@@ -113,6 +113,9 @@ import static org.apache.dubbo.rpc.cluster.Constants.WEIGHT_KEY;
 
 /**
  * RegistryProtocol
+ * RegistryProtocol 可以认为并不是一个真正的协议，他是这些实际的协议（dubbo . rmi）包装者，这样客户端的请求在一开始如果没有服务端的信息，会先从注册中心拉取服务的注册信息，然后再和服务端直连,这个很重要。
+ *
+ * URL 协议头不同，RegistryProtocol 通过 URL 的 registry:// 协议头标识， DubboProtocol通过 URL 的dubbo://协议头标识，在ServiceConfig或者RefrenceConfig中基于扩展点自适应机制会寻找对应的Protocol进行发布与引用
  */
 public class RegistryProtocol implements Protocol {
     public static final String[] DEFAULT_REGISTER_PROVIDER_KEYS = {
@@ -202,6 +205,7 @@ public class RegistryProtocol implements Protocol {
         //  subscription information to cover.
         final URL overrideSubscribeUrl = getSubscribedOverrideUrl(providerUrl);
         final OverrideListener overrideSubscribeListener = new OverrideListener(overrideSubscribeUrl, originInvoker);
+        // 订阅服务监听器？？
         overrideListeners.put(overrideSubscribeUrl, overrideSubscribeListener);
 
         providerUrl = overrideUrlWithConfig(providerUrl, overrideSubscribeListener);
@@ -215,6 +219,7 @@ public class RegistryProtocol implements Protocol {
         // decide if we need to delay publish
         boolean register = providerUrl.getParameter(REGISTER_KEY, true);
         if (register) {
+            // todo debug 注册服务
             register(registryUrl, registeredProviderUrl);
         }
 
@@ -439,6 +444,7 @@ public class RegistryProtocol implements Protocol {
     @SuppressWarnings("unchecked")
     public <T> Invoker<T> refer(Class<T> type, URL url) throws RpcException {
         url = getRegistryUrl(url);
+        // 注册中心
         Registry registry = registryFactory.getRegistry(url);
         if (RegistryService.class.equals(type)) {
             return proxyFactory.getInvoker((T) registry, type, url);
@@ -452,6 +458,7 @@ public class RegistryProtocol implements Protocol {
                 return doRefer(getMergeableCluster(), registry, type, url);
             }
         }
+        // todo cluster 是 spi 注入进来的
         return doRefer(cluster, registry, type, url);
     }
 
@@ -460,6 +467,7 @@ public class RegistryProtocol implements Protocol {
     }
 
     private <T> Invoker<T> doRefer(Cluster cluster, Registry registry, Class<T> type, URL url) {
+        // 动态目录 -- 所有服务提供者信息？？
         RegistryDirectory<T> directory = new RegistryDirectory<T>(type, url);
         directory.setRegistry(registry);
         directory.setProtocol(protocol);
@@ -471,8 +479,10 @@ public class RegistryProtocol implements Protocol {
             registry.register(directory.getRegisteredConsumerUrl());
         }
         directory.buildRouterChain(subscribeUrl);
+        // 注册？？
         directory.subscribe(toSubscribeUrl(subscribeUrl));
-
+        // 多个服务里面选择一个?? directory--服务提供者的信息？？
+        // return new FailoverClusterInvoker<>(directory);
         Invoker<T> invoker = cluster.join(directory);
         List<RegistryProtocolListener> listeners = findRegistryProtocolListeners(url);
         if (CollectionUtils.isEmpty(listeners)) {

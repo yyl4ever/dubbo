@@ -321,6 +321,7 @@ public class DubboProtocol extends AbstractProtocol {
             }
         }
         // 启动ProtocolServer -- 一路调用前面介绍的 Exchange 层(bind)、Transport 层(bind)，并最终创建 NettyServer(bind) 来接收客户端的请求
+        // org.apache.dubbo.remoting.transport.netty4.NettyServer.doOpen
         openServer(url);
         // 进行序列化的优化处理
         optimizeSerialization(url);
@@ -340,7 +341,7 @@ public class DubboProtocol extends AbstractProtocol {
                 synchronized (this) {// DoubleCheck(yyl : 两次 if 之间加 synchronized)，防止并发问题
                     server = serverMap.get(key);
                     if (server == null) {
-                        // 调用createServer()方法创建ProtocolServer对象
+                        // 调用createServer()方法创建ProtocolServer对象，放入缓存 serverMap
                         serverMap.put(key, createServer(url));
                     }
                 }

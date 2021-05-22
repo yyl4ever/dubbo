@@ -92,8 +92,11 @@ public class StaticDirectory<T> extends AbstractDirectory<T> {
     }
 
     public void buildRouterChain() {
+        // 创建内置Router集合
         RouterChain<T> routerChain = RouterChain.buildChain(getUrl());
+        // 将invokers与RouterChain关联
         routerChain.setInvokers(invokers);
+        // 设置routerChain字段
         this.setRouterChain(routerChain);
     }
 
@@ -102,6 +105,7 @@ public class StaticDirectory<T> extends AbstractDirectory<T> {
         List<Invoker<T>> finalInvokers = invokers;
         if (routerChain != null) {
             try {
+                // 使用 RouterChain 中的 Router 从 invokers 集合中过滤出符合路由规则的 Invoker 对象集合
                 finalInvokers = routerChain.route(getConsumerUrl(), invocation);
             } catch (Throwable t) {
                 logger.error("Failed to execute router: " + getUrl() + ", cause: " + t.getMessage(), t);

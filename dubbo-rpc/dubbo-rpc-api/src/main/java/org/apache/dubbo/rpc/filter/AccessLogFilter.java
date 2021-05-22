@@ -61,6 +61,7 @@ import static org.apache.dubbo.rpc.Constants.ACCESS_LOG_KEY;
  *    &lt;appender-ref ref="foo" /&gt;
  * &lt;/logger&gt;
  * </pre></code>
+ * AccessLogFilter 会先将日志消息放入内存日志集合中缓存，当缓存大小超过一定阈值之后，会触发日志的写入。若长时间未触发日志文件写入，则由定时任务定时写入。
  */
 @Activate(group = PROVIDER, value = ACCESS_LOG_KEY)
 public class AccessLogFilter implements Filter {
@@ -80,6 +81,7 @@ public class AccessLogFilter implements Filter {
 
     private static final Map<String, Set<AccessLogData>> LOG_ENTRIES = new ConcurrentHashMap<>();
 
+    // todo ,阿里不遵守阿里规约？
     private static final ScheduledExecutorService LOG_SCHEDULED = Executors.newSingleThreadScheduledExecutor(new NamedThreadFactory("Dubbo-Access-Log", true));
 
     /**
@@ -87,6 +89,7 @@ public class AccessLogFilter implements Filter {
      * defined in url <b>accesslog</b>
      */
     public AccessLogFilter() {
+        //启动一个定时任务，定时调用上面介绍的 writeLogSetToFile() 方法，定时写入日志
         LOG_SCHEDULED.scheduleWithFixedDelay(this::writeLogToFile, LOG_OUTPUT_INTERVAL, LOG_OUTPUT_INTERVAL, TimeUnit.MILLISECONDS);
     }
 
@@ -109,34 +112,49 @@ public class AccessLogFilter implements Filter {
         } catch (Throwable t) {
             logger.warn("Exception in AccessLogFilter of service(" + invoker + " -> " + inv + ")", t);
         }
+        // 调用下一个 invoker
         return invoker.invoke(inv);
     }
 
     private void log(String accessLog, AccessLogData accessLogData) {
+        // 下面这段代码让我想起来，风险分析的时候写日志就是类似的写法
+        // 根据ACCESS_LOG_KEY获取对应的缓存集合
         Set<AccessLogData> logSet = LOG_ENTRIES.computeIfAbsent(accessLog, k -> new ConcurrentHashSet<>());
 
+        // 缓存大小未超过阈值
         if (logSet.size() < LOG_MAX_BUFFER) {
             logSet.add(accessLogData);
         } else {
             logger.warn("AccessLog buffer is full. Do a force writing to file to clear buffer.");
+            // 缓存大小超过阈值，触发缓存数据写入文件
             //just write current logSet to file.
             writeLogSetToFile(accessLog, logSet);
             //after force writing, add accessLogData to current logSet
+            // 完成文件写入之后，再次写入缓存
             logSet.add(accessLogData);
         }
     }
 
+    /**
+     * * 如果 ACCESS_LOG_KEY 配置的值为 true 或 default，会使用 Dubbo 默认提供的统一日志框架，输出到日志文件中；
+     * * 如果 ACCESS_LOG_KEY 配置的值不为 true 或 default，则 ACCESS_LOG_KEY 配置值会被当作 access log 文件的名称，AccessLogFilter 会创建相应的目录和文件，并完成日志的输出。
+     * @param accessLog
+     * @param logSet
+     */
     private void writeLogSetToFile(String accessLog, Set<AccessLogData> logSet) {
         try {
             if (ConfigUtils.isDefault(accessLog)) {
                 processWithServiceLogger(logSet);
             } else {
                 File file = new File(accessLog);
+                // 创建目录
                 createIfLogDirAbsent(file);
                 if (logger.isDebugEnabled()) {
                     logger.debug("Append log to " + accessLog);
                 }
+                // 创建日志文件，这里会以日期为后缀，滚动创建
                 renameFile(file);
+                // 遍历logSet集合，将日志逐条写入文件
                 processWithAccessKeyLogger(logSet, file);
             }
         } catch (Exception e) {
@@ -155,6 +173,7 @@ public class AccessLogFilter implements Filter {
     }
 
     private void processWithAccessKeyLogger(Set<AccessLogData> logSet, File file) throws IOException {
+        // 创建FileWriter，写入指定的日志文件 -- iterator.remove()遍历一个删一个，这种用法可以学习一下
         try (FileWriter writer = new FileWriter(file, true)) {
             for (Iterator<AccessLogData> iterator = logSet.iterator();
                  iterator.hasNext();
@@ -198,7 +217,7 @@ public class AccessLogFilter implements Filter {
         if (file.exists()) {
             String now = FILE_NAME_FORMATTER.format(new Date());
             String last = FILE_NAME_FORMATTER.format(new Date(file.lastModified()));
-            if (!now.equals(last)) {
+            if (!now.equals(last)) {// todo why do this?
                 File archive = new File(file.getAbsolutePath() + "." + last);
                 file.renameTo(archive);
             }

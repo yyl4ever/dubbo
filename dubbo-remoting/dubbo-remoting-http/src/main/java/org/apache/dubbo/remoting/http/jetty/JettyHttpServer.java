@@ -35,6 +35,8 @@ import org.eclipse.jetty.util.log.Log;
 import org.eclipse.jetty.util.log.StdErrLog;
 import org.eclipse.jetty.util.thread.QueuedThreadPool;
 
+import javax.servlet.http.HttpServlet;
+
 import static org.apache.dubbo.common.constants.CommonConstants.THREADS_KEY;
 import static org.apache.dubbo.common.constants.CommonConstants.DEFAULT_THREADS;
 
@@ -46,24 +48,30 @@ public class JettyHttpServer extends AbstractHttpServer {
 
     private URL url;
 
+    /**
+     * 初始化 Jetty Server，其中会配置 Jetty Server 使用到的线程池以及处理请求 Handler
+     * @param url
+     * @param handler
+     */
     public JettyHttpServer(URL url, final HttpHandler handler) {
+        // 初始化AbstractHttpServer中的url字段和handler字段
         super(url, handler);
         this.url = url;
         // TODO we should leave this setting to slf4j
         // we must disable the debug logging for production use
         Log.setLog(new StdErrLog());
         Log.getLog().setDebugEnabled(false);
-
+        // 添加HttpHandler
         DispatcherServlet.addHttpHandler(url.getParameter(Constants.BIND_PORT_KEY, url.getPort()), handler);
-
+         // 创建线程池
         int threads = url.getParameter(THREADS_KEY, DEFAULT_THREADS);
         QueuedThreadPool threadPool = new QueuedThreadPool();
         threadPool.setDaemon(true);
         threadPool.setMaxThreads(threads);
         threadPool.setMinThreads(threads);
-
+        // 创建Jetty Server
         server = new Server(threadPool);
-
+        // 创建ServerConnector，并指定绑定的ip和port
         ServerConnector connector = new ServerConnector(server);
 
         String bindIp = url.getParameter(Constants.BIND_IP_KEY, url.getHost());
@@ -73,11 +81,14 @@ public class JettyHttpServer extends AbstractHttpServer {
         connector.setPort(url.getParameter(Constants.BIND_PORT_KEY, url.getPort()));
 
         server.addConnector(connector);
-
+        // 创建ServletHandler并与Jetty Server关联，由DispatcherServlet处理全部的请求
         ServletHandler servletHandler = new ServletHandler();
+        // JettyHttpServer 收到的全部请求将委托给 DispatcherServlet 这个 HttpServlet 实现
+        // DispatcherServlet 的 service() 方法会把请求委托给对应接端口的 HttpHandler 处理
         ServletHolder servletHolder = servletHandler.addServletWithMapping(DispatcherServlet.class, "/*");
         servletHolder.setInitOrder(2);
 
+        // 创建ServletContextHandler并与Jetty Server关联
         // dubbo's original impl can't support the use of ServletContext
         //        server.addHandler(servletHandler);
         // TODO Context.SESSIONS is the best option here? (In jetty 9.x, it becomes ServletContextHandler.SESSIONS)

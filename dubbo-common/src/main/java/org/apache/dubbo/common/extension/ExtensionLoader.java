@@ -333,7 +333,7 @@ public class ExtensionLoader<T> {
             }
         }
         if (!loadedExtensions.isEmpty()) {
-//             按照顺序，将自定义的扩展添加到默认扩展集合后面
+            // 按照顺序，将自定义的扩展添加到默认扩展集合后面
             activateExtensions.addAll(loadedExtensions);
         }
         return activateExtensions;
@@ -1096,7 +1096,7 @@ public class ExtensionLoader<T> {
         try {
             // 进入 getAdaptiveExtensionClass() 方法
             return injectExtension((T) getAdaptiveExtensionClass().newInstance());
-//            调用 injectExtension() 方法进行自动装配，就能得到一个完整的适配器实例。
+//            调用 injectExtension() 方法（这个是用来做 ioc 自动注入的）进行自动装配，就能得到一个完整的适配器实例。
         } catch (Exception e) {
             throw new IllegalStateException("Can't create adaptive extension " + type + ", cause: " + e.getMessage(), e);
         }

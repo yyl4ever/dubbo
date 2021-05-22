@@ -319,6 +319,7 @@ public abstract class AbstractClusterInvoker<T> implements Invoker<T> {
                                        LoadBalance loadbalance) throws RpcException;
 
     protected List<Invoker<T>> list(Invocation invocation) throws RpcException {
+        // 根据 invocation 找到所有的 Invoker？？
         return directory.list(invocation);
     }
 
