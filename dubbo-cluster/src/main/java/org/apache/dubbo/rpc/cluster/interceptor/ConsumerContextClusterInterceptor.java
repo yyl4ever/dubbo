@@ -26,11 +26,17 @@ import org.apache.dubbo.rpc.cluster.support.AbstractClusterInvoker;
 
 @Activate
 public class ConsumerContextClusterInterceptor implements ClusterInterceptor, ClusterInterceptor.Listener {
-
+    /**
+     * 在 RpcContext 中设置当前 Consumer 地址、此次调用的 Invoker 等信息，同时还会删除之前与当前线程绑定的 Server Context。
+     * @param invoker
+     * @param invocation
+     */
     @Override
     public void before(AbstractClusterInvoker<?> invoker, Invocation invocation) {
+        // 获取当前线程绑定的RpcContext
         RpcContext context = RpcContext.getContext();
         context.setInvocation(invocation).setLocalAddress(NetUtils.getLocalHost(), 0);
+        // 设置Invoker、Consumer地址等信息 context.setInvocation(invocation).setLocalAddress(NetUtils.getLocalHost(), 0);
         if (invocation instanceof RpcInvocation) {
             ((RpcInvocation) invocation).setInvoker(invoker);
         }
@@ -39,9 +45,16 @@ public class ConsumerContextClusterInterceptor implements ClusterInterceptor, Cl
 
     @Override
     public void after(AbstractClusterInvoker<?> clusterInvoker, Invocation invocation) {
+        // 删除本地RpcContext的信息
         RpcContext.removeContext(true);
     }
 
+    /**
+     * 获取响应中的 attachments 并设置到 RpcContext 中的 SERVER_LOCAL 之中
+     * @param appResponse
+     * @param invoker
+     * @param invocation
+     */
     @Override
     public void onMessage(Result appResponse, AbstractClusterInvoker<?> invoker, Invocation invocation) {
         RpcContext.getServerContext().setObjectAttachments(appResponse.getObjectAttachments());

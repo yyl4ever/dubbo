@@ -128,11 +128,12 @@ public abstract class AbstractClusterInvoker<T> implements Invoker<T> {
      * @param loadbalance load balance policy 负载均衡策略
      * @param invocation  invocation 它持有调用过程中的变量，比如方法名，参数等
      * @param invokers    invoker candidates 可以看成是存活着的服务提供者列表
-     * @param selected    exclude selected invokers or not 已经被选择过的 invoker 集合 -- 为了不要再选它？？
+     * @param selected    exclude selected invokers or not 已经被选择过的 invoker 集合 -- 为了后续不要再选它
      * @return the invoker which will final to do invoke.
      * @throws RpcException exception
-     * // 第一个参数是此次使用的LoadBalance实现，第二个参数Invocation是此次服务调用的上下文信息，
-     * // 第三个参数是待选择的Invoker集合，第四个参数用来记录负载均衡已经选出来、尝试过的Invoker集合
+     * 第一个参数是此次使用的LoadBalance实现，第二个参数Invocation是此次服务调用的上下文信息，
+     * 第三个参数是待选择的Invoker集合，第四个参数用来记录负载均衡已经选出来、尝试过的Invoker集合
+     * TODO 它这里的入参 selected 是怎么来的？需要看调用这个方法的地方
      */
     protected Invoker<T> select(LoadBalance loadbalance, Invocation invocation,
                                 List<Invoker<T>> invokers, List<Invoker<T>> selected) throws RpcException {
@@ -163,15 +164,10 @@ public abstract class AbstractClusterInvoker<T> implements Invoker<T> {
         }
 
         // 如果开启了粘滞连接特性，需要先判断这个Provider节点是否已经重试过了
-
-
-        // 在 sticky 为 true，且 stickyInvoker != null 的情况下，如果 selected 包含 stickyInvoker，
-        // 表明 stickyInvoker 对应的服务提供者之前调用的时候，可能因网络原因未能成功提供服务，
-        // 但是该提供者并没有挂，此时 invokers 列表中仍存在该服务提供者对应的 invoker -- 如果 selected 包含 stickyInvoker，
-        // 则说明 stickyInvoker
-        // 虽然还活着，但是之前没有成功提供服务，此时我们认为这个服务不可靠，不应该在重试期间内再次被调用
-        //ignore concurrency problem
-        if (sticky && stickyInvoker != null && (selected == null || !selected.contains(stickyInvoker))) {
+        // 如果 selected 包含stickyInvoker，则说明 stickyInvoker 虽然还活着，但是之前(可能因网络原因)没有成功提供服务，此时我们认为这个服务不可靠，不应该在重试期间内再次被调用
+        // ignore concurrency problem
+        if (sticky && stickyInvoker != null // 表示粘滞连接
+                && (selected == null || !selected.contains(stickyInvoker))) {// 表示stickyInvoker未重试过
             // 检测当前stickyInvoker是否可用，如果可用，直接返回stickyInvoker
 
             // availablecheck 表示是否开启了可用性检查，如果开启了，
@@ -183,9 +179,6 @@ public abstract class AbstractClusterInvoker<T> implements Invoker<T> {
 
         // 执行到这里，说明前面的stickyInvoker为空，或者不可用
         // 这里会继续调用doSelect选择新的Invoker对象
-
-        // 如果线程走到当期代码，说明 stickyInvoker 为空，或者不可用。
-        // 此时继续调用 doSelect 选择 invoker
         Invoker<T> invoker = doSelect(loadbalance, invocation, invokers, selected);
 
         // 是否开启粘滞，更新stickyInvoker字段
@@ -209,7 +202,6 @@ public abstract class AbstractClusterInvoker<T> implements Invoker<T> {
     private Invoker<T> doSelect(LoadBalance loadbalance, Invocation invocation,
                                 List<Invoker<T>> invokers, List<Invoker<T>> selected) throws RpcException {
         // 判断是否需要进行负载均衡，Invoker集合为空，直接返回null
-
         if (CollectionUtils.isEmpty(invokers)) {
             return null;
         }
@@ -255,6 +247,9 @@ public abstract class AbstractClusterInvoker<T> implements Invoker<T> {
     }
 
     /**
+     * reselect() 方法会重新进行一次负载均衡，首先对未尝试过的可用 Invokers 进行负载均衡，如果已经全部重试过了，
+     * 则将尝试过的 Provider 节点过滤掉，然后在可用的 Provider 节点中重新进行负载均衡。
+     *
      * Reselect, use invokers not in `selected` first, if all invokers are in `selected`,
      * just pick an available one using loadbalance policy.
      *
@@ -268,14 +263,13 @@ public abstract class AbstractClusterInvoker<T> implements Invoker<T> {
      */
     private Invoker<T> reselect(LoadBalance loadbalance, Invocation invocation,
                                 List<Invoker<T>> invokers, List<Invoker<T>> selected, boolean availablecheck) throws RpcException {
-
-        // 可以参与重选的 invoker 的集合
+        // 用于记录要重新进行负载均衡的Invoker集合
         // 其元素为所有可用的 invoker 的集合与 selected 集合的差集
         //Allocating one in advance, this list is certain to be used.
         List<Invoker<T>> reselectInvokers = new ArrayList<>(
                 invokers.size() > 1 ? (invokers.size() - 1) : invokers.size());
 
-        // 遍历 invokers 列表
+        // 将不在selected集合中的Invoker过滤出来进行负载均衡
         // First, try picking a invoker not in `selected`.
         for (Invoker<T> invoker : invokers) {
             // 进行可用性检测
@@ -287,20 +281,19 @@ public abstract class AbstractClusterInvoker<T> implements Invoker<T> {
                 reselectInvokers.add(invoker);
             }
         }
-
-        // reselectInvokers 不为空，此时通过负载均衡组件进行选择
+        // reselectInvokers不为空时，才需要通过负载均衡组件进行选择
         if (!reselectInvokers.isEmpty()) {
             return loadbalance.select(reselectInvokers, getUrl(), invocation);
         }
 
-        // 若线程走到此处，说明 reselectInvokers 集合为空，
+        // 只能对selected集合中可用的Invoker再次进行负载均衡 -- 若线程走到此处，说明 reselectInvokers 集合为空，
         // 说明所有的可用的 invoker 都已经被调用过，都在 selected 集合中。
         // 所以这里从  selected 列表中查找可用的 invoker，并将其添加到 reselectInvokers 集合中
         // Just pick an available invoker using loadbalance policy
         if (selected != null) {
             for (Invoker<T> invoker : selected) {
                 if ((invoker.isAvailable()) // available first
-                        && !reselectInvokers.contains(invoker)) {
+                        && !reselectInvokers.contains(invoker)) { // yyl 边加边判断，避免加入重复的 invoker
                     reselectInvokers.add(invoker);
                 }
             }
