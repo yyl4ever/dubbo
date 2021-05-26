@@ -29,20 +29,18 @@ public interface Invoker<T> extends Node {
 
     /**
      * get service interface.
-     *
+     * 服务接口
      * @return service interface.
      */
-    // 服务接口
     Class<T> getInterface();
 
     /**
      * invoke.
-     *
+     * 进行一次调用，也有人称之为一次"会话"，你可以理解为一次调用
      * @param invocation
      * @return result
      * @throws RpcException
      */
-    // 进行一次调用，也有人称之为一次"会话"，你可以理解为一次调用
     Result invoke(Invocation invocation) throws RpcException;
 
 }

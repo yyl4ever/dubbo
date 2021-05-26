@@ -20,6 +20,8 @@ import java.util.EventListener;
 
 /**
  * Config listener, will get notified when the config it listens on changes.
+ * ConfigurationListener 用于监听配置的变化，其中就包括 TagRouterRule 配置的变更。当我们通过动态更新 TagRouterRule 配置的时候，
+ * 就会触发 ConfigurationListener 接口的 process() 方法
  */
 public interface ConfigurationListener extends EventListener {
 

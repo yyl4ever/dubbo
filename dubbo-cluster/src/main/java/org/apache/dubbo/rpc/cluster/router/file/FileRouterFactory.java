@@ -32,8 +32,16 @@ import static org.apache.dubbo.rpc.cluster.Constants.RULE_KEY;
 import static org.apache.dubbo.rpc.cluster.Constants.RUNTIME_KEY;
 import static org.apache.dubbo.rpc.cluster.Constants.TYPE_KEY;
 
+/**
+ * FileRouterFactory 在 ScriptRouterFactory 基础上增加了读取文件的能力。-- 确实是个装饰者模式的运用
+ * 我们可以将 ScriptRouter 使用的路由规则保存到文件中，然后在 URL 中指定文件路径，
+ * FileRouterFactory 从中解析到该脚本文件的路径并进行读取，调用 ScriptRouterFactory 去创建相应的 ScriptRouter 对象。
+ */
 public class FileRouterFactory implements RouterFactory {
 
+    /**
+     * 扩展名
+     */
     public static final String NAME = "file";
 
     private RouterFactory routerFactory;
@@ -42,31 +50,40 @@ public class FileRouterFactory implements RouterFactory {
         this.routerFactory = routerFactory;
     }
 
+    /**
+     * 完成了 file 协议的 URL 到 script 协议 URL 的转换，如下是一个转换示例，首先会将 file:// 协议转换成 script:// 协议，然后会添加 type 参数和 rule 参数，其中 type 参数值根据文件后缀名确定，该示例为 js，rule 参数值为文件内容。
+     * @param url url
+     * @return
+     */
     @Override
     public Router getRouter(URL url) {
         try {
+            // 默认使用script协议
             // Transform File URL into Script Route URL, and Load
             // file:///d:/path/to/route.js?router=script ==> script:///d:/path/to/route.js?type=js&rule=<file-content>
             String protocol = url.getParameter(ROUTER_KEY, ScriptRouterFactory.NAME); // Replace original protocol (maybe 'file') with 'script'
             String type = null; // Use file suffix to config script type, e.g., js, groovy ...
             String path = url.getPath();
             if (path != null) {
+                // 获取脚本文件的语言类型
                 int i = path.lastIndexOf('.');
                 if (i > 0) {
                     type = path.substring(i + 1);
                 }
             }
+            // 读取脚本文件中的内容 FileReader:该类按字符读取流中数据。
             String rule = IOUtils.read(new FileReader(new File(url.getAbsolutePath())));
 
             // FIXME: this code looks useless
             boolean runtime = url.getParameter(RUNTIME_KEY, false);
+            // 创建script协议的URL
             URL script = URLBuilder.from(url)
                     .setProtocol(protocol)
                     .addParameter(TYPE_KEY, type)
                     .addParameter(RUNTIME_KEY, runtime)
                     .addParameterAndEncoded(RULE_KEY, rule)
                     .build();
-
+            // 获取script对应的Router实现
             return routerFactory.getRouter(script);
         } catch (IOException e) {
             throw new IllegalStateException(e.getMessage(), e);

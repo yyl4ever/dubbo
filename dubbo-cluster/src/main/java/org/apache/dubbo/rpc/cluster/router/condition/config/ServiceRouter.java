@@ -21,6 +21,15 @@ import org.apache.dubbo.common.config.configcenter.DynamicConfiguration;
 
 /**
  * Service level router, "server-unique-name.condition-router"
+ * ServiceRouter 和 AppRouter 都是简单地继承了 ListenableRouter 抽象类，且没有覆盖 ListenableRouter 的任何方法，两者只有以下两点区别。
+ *
+ * 一个是 priority 字段值不同。ServiceRouter 为 140，AppRouter 为 150，也就是说 ServiceRouter 要先于 AppRouter 执行。
+ *
+ * 另一个是获取 ConditionRouterRule 配置的 Key 不同。
+ * ServiceRouter 使用的 RuleKey 是由 {interface}:[version]:[group] 三部分构成，
+ * 获取的是一个服务对应的 ConditionRouterRule。
+ * AppRouter 使用的 RuleKey 是 URL 中的 application 参数值，
+ * 获取的是一个服务实例对应的 ConditionRouterRule。
  */
 public class ServiceRouter extends ListenableRouter {
     public static final String NAME = "SERVICE_ROUTER";

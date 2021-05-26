@@ -205,7 +205,7 @@ public class RpcStatus {
 
     /**
      * get active.
-     *
+     * 当前的活跃请求数，也就是当前正在处理的请求数
      * @return active
      */
     public int getActive() {
@@ -298,6 +298,8 @@ public class RpcStatus {
      * @return succeeded
      */
     public long getSucceeded() {
+        // 成功数 = 总数 - 失败数
+        // 为什么一般都会用方法去调用，不直接用属性呢？后续方法内部增加逻辑，这里的代码不用动
         return getTotal() - getFailed();
     }
 
@@ -312,6 +314,7 @@ public class RpcStatus {
 
     /**
      * get succeeded average elapsed.
+     * 调用成功的请求数总数对应的总耗时 / 调用成功的请求数总数 = 成功调用的平均时间。
      *
      * @return succeeded average elapsed
      */
@@ -338,9 +341,11 @@ public class RpcStatus {
      * @return tps
      */
     public long getAverageTps() {
+        // 因为单位用秒计算，加这一步的判断，是为了避免除零异常
         if (getTotalElapsed() >= 1000L) {
             return getTotal() / (getTotalElapsed() / 1000L);
         }
+        // 不到一秒按一秒计算， getTotal()即getTotal() / (1) ，也就是 getTotal() / (1000 / 1000)，妙啊
         return getTotal();
     }
 

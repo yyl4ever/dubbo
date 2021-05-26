@@ -22,7 +22,30 @@ import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.Constructor;
 
 /**
+ * TagRuleParser 可以解析 yaml 格式的 TagRouterRule 配置，下面是一个配置示例：
+ * force: false
  *
+ * runtime: true
+ *
+ * enabled: false
+ *
+ * priority: 1
+ *
+ * key: demo-provider
+ *
+ * tags:
+ *
+ *   - name: tag1
+ *
+ *     addresses: null
+ *
+ *   - name: tag2
+ *
+ *     addresses: ["30.5.120.37:20880"]
+ *
+ *   - name: tag3
+ *
+ *     addresses: []
  */
 public class TagRuleParser {
 

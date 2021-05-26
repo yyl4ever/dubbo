@@ -90,9 +90,19 @@ import static org.apache.dubbo.rpc.cluster.Constants.ROUTER_KEY;
 
 /**
  * RegistryDirectory -- RegistryDirectory 涉及动态查找 Provider URL 以及处理动态配置的相关逻辑
+ *
  * 动态的 Directory 实现，实现了 NotifyListener 接口，
  * 当注册中心的服务配置发生变化时，RegistryDirectory 会收到变更通知，
- * 然后RegistryDirectory 会根据注册中心推送的通知，动态增删底层 Invoker 集合。
+ * 然后 RegistryDirectory 会根据注册中心推送的通知，动态增删底层 Invoker 集合。
+ *
+ * 作为一个 NotifyListener 监听器，RegistryDirectory 会同时监听注册中心的 providers、routers 和 configurators 三个目录
+ *
+ * 通过 RegistryDirectory 处理 configurators 目录的逻辑，
+ * 我们了解到 configurators 目录中动态添加的 URL 会覆盖 providers 目录下注册的 Provider URL，
+ * Dubbo 还会按照 configurators 目录下的最新配置，重新创建 Invoker 对象（同时会销毁原来的 Invoker 对象）
+ *
+ * 当我们在注册中心的 configurators 目录中添加 override（或 absent）协议的 URL 时，Registry 会收到注册中心的通知，
+ * 回调注册在其上的 NotifyListener，其中就包括 RegistryDirectory。
  */
 public class RegistryDirectory<T> extends AbstractDirectory<T> implements NotifyListener {
 
@@ -280,7 +290,7 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
 
     /**
      * 在注册 NotifyListener 的时候，监听的是 providers、configurators 和 routers 三个目录，
-     * 所以在这三个目录下发生变化的时候，就会触发 RegistryDirectory 的 notify() 方法
+     * 所以在这三个目录下发生变化的时候，就会触发 RegistryDirectory 的 notify() 方法，其中 configurators 目录下 URL 会被解析成 Configurator 对象
      * @param urls The list of registered information , is always not empty. The meaning is the same as the return value of {@link org.apache.dubbo.registry.RegistryService#lookup(URL)}.
      */
     @Override

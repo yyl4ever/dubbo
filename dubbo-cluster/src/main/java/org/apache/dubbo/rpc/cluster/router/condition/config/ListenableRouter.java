@@ -40,6 +40,9 @@ import java.util.stream.Collectors;
 
 /**
  * Abstract router which listens to dynamic configuration
+ * ListenableRouter 在 ConditionRouter 基础上添加了动态配置的能力，
+ * ListenableRouter 的 process() 方法与 TagRouter 中的 process() 方法类似，
+ * 对于 ConfigChangedEvent.DELETE 事件，直接清空 ListenableRouter 中维护的 ConditionRouterRule 和 ConditionRouter 集合的引用；对于 ADDED、UPDATED 事件，则通过 ConditionRuleParser 解析事件内容，得到相应的 ConditionRouterRule 对象和 ConditionRouter 集合。这里的 ConditionRuleParser 同样是以 yaml 文件的格式解析 ConditionRouterRule 的相关配置。ConditionRouterRule 中维护了一个 conditions 集合（List<String> 类型），记录了多个 Condition 路由规则，对应生成多个 ConditionRouter 对象。
  */
 public abstract class ListenableRouter extends AbstractRouter implements ConfigurationListener {
     public static final String NAME = "LISTENABLE_ROUTER";
@@ -79,9 +82,11 @@ public abstract class ListenableRouter extends AbstractRouter implements Configu
     @Override
     public <T> List<Invoker<T>> route(List<Invoker<T>> invokers, URL url, Invocation invocation) throws RpcException {
         if (CollectionUtils.isEmpty(invokers) || conditionRouters.size() == 0) {
+            //检测边界条件，直接返回 invoker 集合
             return invokers;
         }
 
+        // 路由规则进行过滤
         // We will check enabled status inside each router.
         for (Router router : conditionRouters) {
             invokers = router.route(invokers, url, invocation);

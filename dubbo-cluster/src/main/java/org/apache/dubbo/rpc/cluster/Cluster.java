@@ -39,6 +39,7 @@ public interface Cluster {
      * @param directory
      * @return cluster invoker
      * @throws RpcException
+     * @Adaptive 注解，会动态生成适配器类，其中会优先根据 Directory.getUrl() 方法返回的 URL 中的 cluster 参数值选择扩展实现，若无 cluster 参数则使用默认的 FailoverCluster 实现。
      */
     @Adaptive
     <T> Invoker<T> join(Directory<T> directory) throws RpcException;

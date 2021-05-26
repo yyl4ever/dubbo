@@ -44,20 +44,34 @@ public abstract class AbstractLoadBalance implements LoadBalance {
      * @param warmup the warmup time in milliseconds
      * @param weight the weight of an invoker
      * @return weight which takes warmup into account
+     * 对还在预热状态的 Provider 节点进行降权，避免 Provider 一启动就有大量请求涌进来。服务预热是一个优化手段，这是由 JVM 本身的一些特性决定的，例如，JIT 等方面的优化，我们一般会在服务启动之后，让其在小流量状态下运行一段时间，然后再逐步放大流量。
      */
     static int calculateWarmupWeight(int uptime, int warmup, int weight) {
+        // ww = weight * (uptime / warmup)
         int ww = (int) ( uptime / ((float) warmup / weight));
+        // ww 会随着 uptime 的增大，逐渐超过 weight，但最终取两者的较小值 -- 精妙
         return ww < 1 ? 1 : (Math.min(ww, weight));
     }
 
+    /**
+     * 并没有真正实现 select() 方法，只是对 Invoker 集合为空或是只包含一个 Invoker 对象的特殊情况进行了处理
+     * @param invokers   invokers. 有多少服务能够被调用
+     * @param url        refer url
+     * @param invocation invocation.
+     * @param <T>
+     * @return
+     */
     @Override
     public <T> Invoker<T> select(List<Invoker<T>> invokers, URL url, Invocation invocation) {
         if (CollectionUtils.isEmpty(invokers)) {
+            // Invoker集合为空，直接返回null
             return null;
         }
+        // Invoker集合为空，直接返回null
         if (invokers.size() == 1) {
             return invokers.get(0);
         }
+        // Invoker集合包含多个Invoker对象时，交给doSelect()方法处理，这是个抽象方法，留给子类具体实现
         return doSelect(invokers, url, invocation);
     }
 
@@ -65,6 +79,7 @@ public abstract class AbstractLoadBalance implements LoadBalance {
 
 
     /**
+     * 计算 Provider 权重
      * Get the weight of the invoker's invocation which takes warmup time into account
      * if the uptime is within the warmup time, the weight will be reduce proportionally
      *
@@ -77,17 +92,22 @@ public abstract class AbstractLoadBalance implements LoadBalance {
         URL url = invoker.getUrl();
         // Multiple registry scenario, load balance among multiple registries.
         if (REGISTRY_SERVICE_REFERENCE_PATH.equals(url.getServiceInterface())) {
+            // 如果是RegistryService接口的话，直接获取权重即可
             weight = url.getParameter(REGISTRY_KEY + "." + WEIGHT_KEY, DEFAULT_WEIGHT);
         } else {
             weight = url.getMethodParameter(invocation.getMethodName(), WEIGHT_KEY, DEFAULT_WEIGHT);
             if (weight > 0) {
+                // 获取服务提供者的启动时间戳
                 long timestamp = invoker.getUrl().getParameter(TIMESTAMP_KEY, 0L);
                 if (timestamp > 0L) {
+                    // 计算Provider运行时长
                     long uptime = System.currentTimeMillis() - timestamp;
                     if (uptime < 0) {
                         return 1;
                     }
+                    // 计算Provider预热时长
                     int warmup = invoker.getUrl().getParameter(WARMUP_KEY, DEFAULT_WARMUP);
+                    // 如果Provider运行时间小于预热时间，则该Provider节点可能还在预热阶段，需要重新计算服务权重(降低其权重)
                     if (uptime > 0 && uptime < warmup) {
                         weight = calculateWarmupWeight((int)uptime, warmup, weight);
                     }

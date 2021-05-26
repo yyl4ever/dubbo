@@ -25,7 +25,7 @@ import org.apache.dubbo.rpc.cluster.ConfiguratorFactory;
  *
  */
 public class AbsentConfiguratorFactory implements ConfiguratorFactory {
-
+    // 对应的扩展名是 absent
     @Override
     public Configurator getConfigurator(URL url) {
         return new AbsentConfigurator(url);

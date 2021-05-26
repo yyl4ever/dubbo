@@ -26,6 +26,9 @@ import java.util.concurrent.ConcurrentMap;
  * For 2.6.x style router, please implement and use RouterFactory directly.
  */
 public abstract class CacheableRouterFactory implements RouterFactory {
+    /**
+     * 缓存 Router，其中的 Key 是 ServiceKey。
+     */
     private ConcurrentMap<String, Router> routerMap = new ConcurrentHashMap<>();
 
     @Override

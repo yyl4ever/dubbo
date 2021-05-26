@@ -34,12 +34,14 @@ import java.util.List;
  * @see org.apache.dubbo.rpc.cluster.Cluster#join(Directory)
  * 入口
  */
+// 默认使用的扩展实现是 RandomLoadBalance
 @SPI(RandomLoadBalance.NAME)
 public interface LoadBalance {
 
     /**
+     * 根据传入的 URL 和 Invocation，以及自身的负载均衡算法，从 Invoker 集合中选择一个 Invoker 返回
      * select one invoker in list.
-     *
+     * Adaptive("loadbalance") : 动态生成的适配器会按照 URL 中的 loadbalance 参数值选择扩展实现类
      * @param invokers   invokers. 有多少服务能够被调用
      * @param url        refer url
      * @param invocation invocation.

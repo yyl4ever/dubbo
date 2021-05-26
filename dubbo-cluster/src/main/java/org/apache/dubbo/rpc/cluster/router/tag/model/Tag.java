@@ -19,7 +19,7 @@ package org.apache.dubbo.rpc.cluster.router.tag.model;
 import java.util.List;
 
 /**
- *
+ *每个 Tag 对象中又都维护了一个 Tag 的名称，以及 Tag 绑定的网络地址集合
  */
 public class Tag {
     private String name;
