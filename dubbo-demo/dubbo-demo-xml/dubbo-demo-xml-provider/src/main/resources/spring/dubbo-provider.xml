@@ -23,6 +23,7 @@
 
     <!--这里应该写当前服务名称-->
     <dubbo:application metadata-type="remote" name="demo-provider"/>
+    <!--元数据中心-->
     <dubbo:metadata-report address="zookeeper://127.0.0.1:2181"/>
 
     <!--指定注册中心地址（就是 ZooKeeper 的地址）,这样 Dubbo 才能把暴露的 DemoService 服务注册到 ZooKeeper 中-->
@@ -31,9 +32,16 @@
     <dubbo:protocol name="dubbo"/>
     <!-- 配置为 Spring Bean -->
     <bean id="demoService" class="org.apache.dubbo.demo.provider.DemoServiceImpl"/>
+    <bean id="demoServiceB" class="org.apache.dubbo.demo.provider.DemoServiceImpl"/>
 
     <!-- 作为 Dubbo 服务暴露出去 -->
     <!--暴露服务，注册服务，即「服务导出」-->
-    <dubbo:service interface="org.apache.dubbo.demo.DemoService" ref="demoService"/>
+<!--    <dubbo:service interface="org.apache.dubbo.demo.DemoService" ref="demoService"/>-->
 
+    <!--merger参数测试 start-->
+    <!-- 配置两个Spring Bean，用于测试 merger 参数 -->
+    <!-- 将demoService和demoServiceB两个Spring Bean作为服务发布出去，分别属于groupA和groupB-->
+    <dubbo:service interface="org.apache.dubbo.demo.DemoService" ref="demoService" group="groupA"  timeout="25000"/>
+    <dubbo:service interface="org.apache.dubbo.demo.DemoService" ref="demoServiceB" group="groupB"  timeout="25000"/>
+    <!--merger参数测试 end-->
 </beans>

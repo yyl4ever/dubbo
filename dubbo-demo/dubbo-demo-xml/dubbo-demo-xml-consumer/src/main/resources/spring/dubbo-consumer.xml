@@ -27,6 +27,13 @@
 
     <!--引入DemoService服务，并配置成Spring Bean-->
     <!--服务引用，我现在要使用哪个服务-->
-    <dubbo:reference id="demoService" check="false" interface="org.apache.dubbo.demo.DemoService"/>
+<!--        <dubbo:reference id="demoService" check="false" interface="org.apache.dubbo.demo.DemoService"/>-->
+
+    <!--merger参数测试 start-->
+    <!-- 引用DemoService，这里指定了group为*，即可以引用任何group的Provider，同时merger设置为true，即需要对结果进行合并-->
+    <!--测试不通过，找不到问题所在-->
+    <dubbo:reference id="demoService" check="false" interface="org.apache.dubbo.demo.DemoService" group="*"
+                     merger="true"  timeout="25000"/>
+    <!--merger参数测试 end-->
 
 </beans>

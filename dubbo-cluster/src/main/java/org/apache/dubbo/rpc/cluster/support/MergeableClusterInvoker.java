@@ -45,6 +45,10 @@ import static org.apache.dubbo.rpc.Constants.MERGER_KEY;
 
 /**
  * @param <T>
+ * 对多个 Provider 节点返回结果合并。如果请求的方法没有配置 Merger 合并器（即没有指定 merger 参数），则不会进行结果合并，而是直接将第一个可用的 Invoker 结果返回。
+ *
+ * MergeableClusterInvoker 中会读取 URL 中的 merger 参数值，如果 merger 参数以 "." 开头，则表示 "." 后的内容是一个方法名，这个方法名是远程目标方法的返回类型中的一个方法，
+ * MergeableClusterInvoker 在拿到所有 Invoker 返回的结果对象之后，会遍历每个返回结果，并调用 merger 参数指定的方法，合并这些结果值。
  */
 @SuppressWarnings("unchecked")
 public class MergeableClusterInvoker<T> extends AbstractClusterInvoker<T> {
@@ -59,6 +63,8 @@ public class MergeableClusterInvoker<T> extends AbstractClusterInvoker<T> {
     protected Result doInvoke(Invocation invocation, List<Invoker<T>> invokers, LoadBalance loadbalance) throws RpcException {
         checkInvokers(invokers, invocation);
         String merger = getUrl().getMethodParameter(invocation.getMethodName(), MERGER_KEY);
+        // 判断要调用的目标方法是否有合并器，如果没有，则不会进行合并，
+        // 找到第一个可用的Invoker直接调用并返回结果
         if (ConfigUtils.isEmpty(merger)) { // If a method doesn't have a merger, only invoke one Group
             for (final Invoker<T> invoker : invokers) {
                 if (invoker.isAvailable()) {
@@ -75,15 +81,16 @@ public class MergeableClusterInvoker<T> extends AbstractClusterInvoker<T> {
             }
             return invokers.iterator().next().invoke(invocation);
         }
-
+        // 确定目标方法的返回值类型
         Class<?> returnType;
         try {
+            // 反射获取指定方法的返回类型
             returnType = getInterface().getMethod(
                     invocation.getMethodName(), invocation.getParameterTypes()).getReturnType();
         } catch (NoSuchMethodException e) {
             returnType = null;
         }
-
+        // 调用每个Invoker对象(异步方式)，将请求结果记录到results集合中
         Map<String, Result> results = new HashMap<>();
         for (final Invoker<T> invoker : invokers) {
             RpcInvocation subInvocation = new RpcInvocation(invocation, invoker);
@@ -94,10 +101,11 @@ public class MergeableClusterInvoker<T> extends AbstractClusterInvoker<T> {
         Object result = null;
 
         List<Result> resultList = new ArrayList<Result>(results.size());
-
+        // 遍历，等待结果返回
         for (Map.Entry<String, Result> entry : results.entrySet()) {
             Result asyncResult = entry.getValue();
             try {
+                // 阻塞操作
                 Result r = asyncResult.get();
                 if (r.hasException()) {
                     log.error("Invoke " + getGroupDescFromServiceKey(entry.getKey()) +
@@ -117,9 +125,11 @@ public class MergeableClusterInvoker<T> extends AbstractClusterInvoker<T> {
             return resultList.iterator().next();
         }
 
-        if (returnType == void.class) {
+        if (returnType == void.class) {// 跟resultList.isEmpty()，是不是重了？
             return AsyncRpcResult.newDefaultAsyncResult(invocation);
         }
+        // merger如果以"."开头，后面为方法名，这个方法名是远程目标方法的返回类型中的方法
+        // 得到每个Provider节点返回的结果对象之后，会遍历每个返回对象，调用merger参数指定的方法
 
         if (merger.startsWith(".")) {
             merger = merger.substring(1);
@@ -133,11 +143,14 @@ public class MergeableClusterInvoker<T> extends AbstractClusterInvoker<T> {
             if (!Modifier.isPublic(method.getModifiers())) {
                 method.setAccessible(true);
             }
+            // resultList集合保存了所有的返回对象，method是Method对象，也就是merger指定的方法
+            // result是最后返回调用方的结果
             result = resultList.remove(0).getValue();
             try {
                 if (method.getReturnType() != void.class
                         && method.getReturnType().isAssignableFrom(result.getClass())) {
                     for (Result r : resultList) {
+                        // 反射调用
                         result = method.invoke(result, r.getValue());
                     }
                 } else {
@@ -151,8 +164,12 @@ public class MergeableClusterInvoker<T> extends AbstractClusterInvoker<T> {
         } else {
             Merger resultMerger;
             if (ConfigUtils.isDefault(merger)) {
+                // merger参数为true或者default，表示使用默认的Merger扩展实现完成合并
+                // 在后面课时中会介绍Merger接口
                 resultMerger = MergerFactory.getMerger(returnType);
             } else {
+                //merger参数指定了Merger的扩展名称，则使用SPI查找对应的Merger扩展实现对象
+
                 resultMerger = ExtensionLoader.getExtensionLoader(Merger.class).getExtension(merger);
             }
             if (resultMerger != null) {
@@ -160,6 +177,7 @@ public class MergeableClusterInvoker<T> extends AbstractClusterInvoker<T> {
                 for (Result r : resultList) {
                     rets.add(r.getValue());
                 }
+                // 执行合并操作
                 result = resultMerger.merge(
                         rets.toArray((Object[]) Array.newInstance(returnType, 0)));
             } else {

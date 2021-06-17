@@ -216,6 +216,7 @@ public class RpcUtils {
         Class<?> invokerInterface = invocation.getInvoker().getInterface();
         Class<?> cls = invokerInterface != null ? ReflectUtils.forName(invokerInterface.getClassLoader(), service)
                 : ReflectUtils.forName(service);
+        // getMethod(String name, Class<?>... parameterTypes)
         Method method = cls.getMethod(invocation.getMethodName(), invocation.getParameterTypes());
         if (method.getReturnType() == void.class) {
             return null;

@@ -218,6 +218,7 @@ class URL implements Serializable {
             parameters = new HashMap<>(parameters);
         }
         this.parameters = Collections.unmodifiableMap(parameters);
+        // private final Map<String, Map<String, String>> methodParameters;
         this.methodParameters = Collections.unmodifiableMap(methodParameters);
     }
 

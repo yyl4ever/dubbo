@@ -21,6 +21,9 @@ import org.apache.dubbo.rpc.cluster.Merger;
 
 import java.lang.reflect.Array;
 
+/**
+ * 当服务接口的返回值为数组的时候，会使用 ArrayMerger 将多个数组合并成一个数组，也就是将二维数组拍平成一维数组
+ */
 public class ArrayMerger implements Merger<Object[]> {
 
     public static final ArrayMerger INSTANCE = new ArrayMerger();
@@ -28,14 +31,16 @@ public class ArrayMerger implements Merger<Object[]> {
     @Override
     public Object[] merge(Object[]... items) {
         if (ArrayUtils.isEmpty(items)) {
+            // 传入的结果集合为空，则直接返回空数组
             return new Object[0];
         }
 
         int i = 0;
+        // 查找第一个不为null的结果
         while (i < items.length && items[i] == null) {
             i++;
         }
-
+        // 所有items数组中全部结果都为null，则直接返回空数组
         if (i == items.length) {
             return new Object[0];
         }
@@ -44,26 +49,31 @@ public class ArrayMerger implements Merger<Object[]> {
 
         int totalLen = 0;
         for (; i < items.length; i++) {
+            // 忽略为null的结果
             if (items[i] == null) {
                 continue;
             }
             Class<?> itemType = items[i].getClass().getComponentType();
             if (itemType != type) {
+                // 保证类型相同
                 throw new IllegalArgumentException("Arguments' types are different");
             }
             totalLen += items[i].length;
         }
 
         if (totalLen == 0) {
+            // 确定最终数组的长度
             return new Object[0];
         }
 
         Object result = Array.newInstance(type, totalLen);
 
         int index = 0;
+        // 遍历全部的结果数组，将items二维数组中的每个元素都加到result中，形成一维数组
         for (Object[] array : items) {
             if (array != null) {
                 for (int j = 0; j < array.length; j++) {
+                    // yyl : 速度更快？
                     Array.set(result, index++, array[j]);
                 }
             }

@@ -30,7 +30,7 @@ import java.util.List;
 
 /**
  * BroadcastClusterInvoker
- *
+ * 逐个调用每个 Provider 节点，其中任意一个 Provider 节点报错，都会在全部调用结束之后抛出异常。BroadcastClusterInvoker通常用于通知类的操作，例如通知所有 Provider 节点更新本地缓存。
  */
 public class BroadcastClusterInvoker<T> extends AbstractClusterInvoker<T> {
 
@@ -43,12 +43,16 @@ public class BroadcastClusterInvoker<T> extends AbstractClusterInvoker<T> {
     @Override
     @SuppressWarnings({"unchecked", "rawtypes"})
     public Result doInvoke(final Invocation invocation, List<Invoker<T>> invokers, LoadBalance loadbalance) throws RpcException {
+        // 检测Invoker集合是否为空
         checkInvokers(invokers, invocation);
         RpcContext.getContext().setInvokers((List) invokers);
+        // 用于记录失败请求的相关异常信息
         RpcException exception = null;
         Result result = null;
+        // 遍历所有Invoker对象 -- 它为什么不在中途出现异常就break跳出来呢，或者直接 throw 呢
         for (Invoker<T> invoker : invokers) {
             try {
+                // 发起请求
                 result = invoker.invoke(invocation);
             } catch (RpcException e) {
                 exception = e;
@@ -58,6 +62,7 @@ public class BroadcastClusterInvoker<T> extends AbstractClusterInvoker<T> {
                 logger.warn(e.getMessage(), e);
             }
         }
+        // 出现任何异常，都会在这里抛出
         if (exception != null) {
             throw exception;
         }

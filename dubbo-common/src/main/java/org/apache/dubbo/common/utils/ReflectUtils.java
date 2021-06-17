@@ -786,6 +786,7 @@ public final class ReflectUtils {
         }
 
         if (cl == null) {
+            // ClassLoader cl
             cl = ClassUtils.getClassLoader();
         }
         Class<?> clazz = NAME_CLASS_CACHE.get(name);
@@ -1185,6 +1186,7 @@ public final class ReflectUtils {
         Class<?> returnType = method.getReturnType();
         Type genericReturnType = method.getGenericReturnType();
         if (Future.class.isAssignableFrom(returnType)) {
+            // 参数化类型
             if (genericReturnType instanceof ParameterizedType) {
                 Type actualArgType = ((ParameterizedType) genericReturnType).getActualTypeArguments()[0];
                 if (actualArgType instanceof ParameterizedType) {

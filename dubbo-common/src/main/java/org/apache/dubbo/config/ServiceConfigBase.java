@@ -266,7 +266,7 @@ public abstract class ServiceConfigBase<T> extends AbstractServiceConfig {
     }
 
     public Class<?> getInterfaceClass() {
-        if (interfaceClass != null) {
+        if (interfaceClass != null) {//interface org.apache.dubbo.demo.DemoService
             return interfaceClass;
         }
         if (ref instanceof GenericService) {

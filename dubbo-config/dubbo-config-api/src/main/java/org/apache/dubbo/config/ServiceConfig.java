@@ -180,6 +180,9 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
         dispatch(new ServiceConfigUnexportedEvent(this));
     }
 
+    /**
+     * 第一步是检查参数，第二步会根据当前配置决定是延迟发布还是立即调用 doExport() 方法进行发布，第三步会通过 exported() 方法回调相关监听器
+     */
     public synchronized void export() {
         if (!shouldExport()) {
             return;
@@ -189,9 +192,9 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
             bootstrap = DubboBootstrap.getInstance();
             bootstrap.init();
         }
-
+        // 检查并更新各项配置
         checkAndUpdateSubConfigs();
-
+        // 初始化元数据相关服务
         //init serviceMetadata
         serviceMetadata.setVersion(version);
         serviceMetadata.setGroup(group);
@@ -202,11 +205,12 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
 
         // 延迟导出
         if (shouldDelay()) {
-            DELAY_EXPORT_EXECUTOR.schedule(this::doExport, getDelay(), TimeUnit.MILLISECONDS);
+            DELAY_EXPORT_EXECUTOR.schedule(this::doExport, getDelay(), TimeUnit.MILLISECONDS);// why this::doExport? implements runnable???
         } else {
+            // 立即发布
             doExport();
         }
-
+        // 回调监听器
         exported();
     }
 
@@ -215,6 +219,9 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
         dispatch(new ServiceConfigExportedEvent(this));
     }
 
+    /**
+     * 检查各项配置是否合理，并补齐一些缺省的配置信息
+     */
     private void checkAndUpdateSubConfigs() {
         // Use default configs defined explicitly with global scope
         completeCompoundConfigs();
@@ -296,7 +303,7 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
         exported = true;
 
         if (StringUtils.isEmpty(path)) {
-            path = interfaceName;
+            path = interfaceName;// org.apache.dubbo.demo.DemoService
         }
         doExportUrls();
     }
@@ -313,11 +320,32 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
                 serviceMetadata
         );
 
-
-        // 加载注册中心
+        // 首先调用 loadRegistries() 方法加载注册中心信息，
+        // 即将 RegistryConfig (RegistryConfig 是 Dubbo 的多个配置对象之一，
+        // 可以通过解析 XML、Annotation 中注册中心相关的配置得到，对应的配置如下（当然，也可以直接通过 API 创建得到）:
+        // <dubbo:registry address="zookeeper://127.0.0.1:2181" protocol="zookeeper" port="2181" />
+        // )配置解析成 registryUrl。RegistryUrl 的格式大致如下:
+        // // path是Zookeeper的地址
+        //
+        //registry://127.0.0.1:2181/org.apache.dubbo.registry.RegistryService?
+        //
+        //application=dubbo-demo-api-provider
+        //
+        //&dubbo=2.0.2
+        //
+        //&pid=9405
+        //
+        //&registry=zookeeper // 使用的注册中心是Zookeeper
+        //
+        //&timestamp=1600307343086
+        // 无论是使用 XML、Annotation，还是 API 配置方式，都可以配置多个注册中心地址，一个服务接口可以同时注册在多个不同的注册中心。
+        // 加载注册中心 -- registry://127.0.0.1:2181/org.apache.dubbo.registry.RegistryService
+        // ?application=dubbo-demo-api-provider&dubbo=2.0.2&pid=13683&registry=zookeeper&timeout=25000&timestamp=1623916389993
         List<URL> registryURLs = ConfigValidationUtils.loadRegistries(this, true);
 
-        // 遍历每个协议，可以是dubbo,http,rmi等协议
+        // 加载注册中心信息得到 RegistryUrl 之后，会遍历所有的 ProtocolConfig，依次调用 doExportUrlsFor1Protocol(protocolConfig, registryURLs) 在每个注册中心发布服务。
+        // 一个服务接口可以以多种协议进行发布，每种协议都对应一个 ProtocolConfig，例如我们在 Demo 示例中，只使用了 dubbo 协议，对应的配置是：<dubbo:protocol name="dubbo" />。
+        // 遍历每个协议，可以是dubbo,http,rmi等协议 protocols -- <dubbo:protocol name="dubbo" />
         // 一个协议一个服务
         for (ProtocolConfig protocolConfig : protocols) {
             // path 表示服务名
@@ -335,17 +363,43 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
         }
     }
 
+    /**
+     * 组装服务的 URL核心步骤有如下 7 步。
+     *
+     * 获取此次发布使用的协议，默认使用 dubbo 协议。
+     *
+     * 设置服务 URL 中的参数，这里会从 MetricsConfig、ApplicationConfig、ModuleConfig、ProviderConfig、ProtocolConfig 中获取配置信息，
+     * 并作为参数添加到 URL 中。这里调用的 appendParameters() 方法会将 AbstractConfig 中的配置信息存储到 Map 集合中，后续在构造 URL 的时候，会将该集合中的 KV 作为 URL 的参数。
+     *
+     * 解析指定方法的 MethodConfig 配置以及方法参数的 ArgumentConfig 配置，得到的配置信息也是记录到 Map 集合中，后续作为 URL 参数。
+     *
+     * 根据此次调用是泛化调用还是普通调用，向 Map 集合中添加不同的键值对。
+     *
+     * 获取 token 配置，并添加到 Map 集合中，默认随机生成 UUID。
+     *
+     * 获取 host、port 值，并开始组装服务的 URL。
+     *
+     * 根据 Configurator 覆盖或新增 URL 参数。
+     * @param protocolConfig
+     * @param registryURLs
+     */
     private void doExportUrlsFor1Protocol(ProtocolConfig protocolConfig, List<URL> registryURLs) {
+        // 获取协议名称
         String name = protocolConfig.getName();
+        // 默认使用Dubbo协议
         if (StringUtils.isEmpty(name)) {
             name = DUBBO;
         }
 
+        // 记录URL的参数
         Map<String, String> map = new HashMap<String, String>();
+        // side参数
         map.put(SIDE_KEY, PROVIDER_SIDE);
 
-        // 拼接参数，可以看出一些覆盖关系
+        // 拼接参数，可以看出一些优先级的覆盖关系
+        // 添加URL参数，例如Dubbo版本、时间戳、当前PID等
         ServiceConfig.appendRuntimeParameters(map);
+        // 下面会从各个Config获取参数，例如，application、interface参数等
         AbstractConfig.appendParameters(map, getMetrics());
         AbstractConfig.appendParameters(map, getApplication());
         AbstractConfig.appendParameters(map, getModule());
@@ -358,6 +412,7 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
         if (metadataReportConfig != null && metadataReportConfig.isValid()) {
             map.putIfAbsent(METADATA_KEY, REMOTE_METADATA_STORAGE_TYPE);
         }
+        // 从MethodConfig中获取URL参数
         if (CollectionUtils.isNotEmpty(getMethods())) {
             // 方法级别的配置
             for (MethodConfig method : getMethods()) {
@@ -371,6 +426,7 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
                 }
                 List<ArgumentConfig> arguments = method.getArguments();
                 if (CollectionUtils.isNotEmpty(arguments)) {
+                    // 从ArgumentConfig中获取URL参数
                     for (ArgumentConfig argument : arguments) {
                         // convert argument type
                         if (argument.getType() != null && argument.getType().length() > 0) {
@@ -414,7 +470,8 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
                 }
             } // end of methods for
         }
-
+        // 调用是否为泛化调用
+        // 根据generic是否为true，向map中添加不同的信息
         if (ProtocolUtils.isGeneric(generic)) {
             map.put(GENERIC_KEY, generic);
             map.put(METHODS_KEY, ANY_VALUE);
@@ -427,6 +484,7 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
             String[] methods = Wrapper.getWrapper(interfaceClass).getMethodNames();
             if (methods.length == 0) {
                 logger.warn("No method found in service interface " + interfaceClass.getName());
+                // 添加method参数
                 map.put(METHODS_KEY, ANY_VALUE);
             } else {
                 map.put(METHODS_KEY, StringUtils.join(new HashSet<String>(Arrays.asList(methods)), ","));
@@ -435,6 +493,7 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
 
         /**
          * Here the token value configured by the provider is used to assign the value to ServiceConfig#token
+         * // 添加token到map集合中，默认随机生成UUID
          */
         if(ConfigUtils.isEmpty(token) && provider != null) {
             token = provider.getToken();
@@ -447,39 +506,87 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
                 map.put(TOKEN_KEY, token);
             }
         }
+        // 将map数据放入serviceMetadata中，这与元数据相关，后面再详细介绍其作用
         //init serviceMetadata attachments
         serviceMetadata.getAttachments().putAll(map);
 
+        // 获取host、port值 -- 10.26.182.31 20880
         // export service
         String host = findConfigedHosts(protocolConfig, registryURLs, map);
         Integer port = findConfigedPorts(protocolConfig, name, map);
+        // 根据上面获取的host、port以及前文获取的map集合组装URL
         // 组装出 URL 了
         URL url = new URL(name, host, port, getContextPath(protocolConfig).map(p -> p + "/" + path).orElse(path), map);
 
+        // 通过Configurator覆盖或添加新的参数
         // You can customize Configurator to append extra parameters
         if (ExtensionLoader.getExtensionLoader(ConfiguratorFactory.class)
                 .hasExtension(url.getProtocol())) {
             url = ExtensionLoader.getExtensionLoader(ConfiguratorFactory.class)
                     .getExtension(url.getProtocol()).getConfigurator(url).configure(url);
         }
-
+        // 经过上述准备操作之后，得到的服务 URL 如下所示:dubbo://172.17.108.185:20880/org.apache.dubbo.demo.DemoService?
+        //
+        //anyhost=true
+        //
+        //&application=dubbo-demo-api-provider
+        //
+        //&bind.ip=172.17.108.185
+        //
+        //&bind.port=20880
+        //
+        //&default=true
+        //
+        //&deprecated=false
+        //
+        //&dubbo=2.0.2
+        //
+        //&dynamic=true
+        //
+        //&generic=false
+        //
+        //&interface=org.apache.dubbo.demo.DemoService
+        //
+        //&methods=sayHello,sayHelloAsync
+        //
+        //&pid=3918
+        //
+        //&release=
+        //
+        //&side=provider
+        //
+        //&timestamp=1600437404483
+        // scope 参数有三个可选值，分别是 none、remote 和 local，分别代表不发布、发布到本地和发布到远端注册中心
+        // 发布到本地的条件是 scope != remote；
+        // 发布到注册中心的条件是 scope != local。scope 参数的默认值为 null，也就是说，默认会同时在本地和注册中心发布该服务。
         String scope = url.getParameter(SCOPE_KEY);
+        //  scope不为none，才进行发布
         // don't export when none is configured
         if (!SCOPE_NONE.equalsIgnoreCase(scope)) {
 
             // export to local if the config is not remote (export to remote only when config is remote)
             if (!SCOPE_REMOTE.equalsIgnoreCase(scope)) {
+                // 发布到本地
                 exportLocal(url);
             }
+            // 发布到远端的注册中心
             // export to remote if the config is not local (export to local only when config is local)
             if (!SCOPE_LOCAL.equalsIgnoreCase(scope)) {
+                // 当前配置了至少一个注册中心
                 if (CollectionUtils.isNotEmpty(registryURLs)) {
+                    // 远程发布服务，遍历全部 RegistryURL，向每个注册中心发布服务,
+                    // 并根据 RegistryURL 选择对应的 Protocol 扩展实现进行发布。
+                    // RegistryURL 是 "registry://" 协议，所以这里使用的是 RegistryProtocol 实现。
                     for (URL registryURL : registryURLs) {
+                        // injvm协议只在exportLocal()中有用，不会将服务发布到注册中心
+                        // 所以这里忽略injvm协议
                         //if protocol is only injvm ,not register
                         if (LOCAL_PROTOCOL.equalsIgnoreCase(url.getProtocol())) {
                             continue;
                         }
+                        // 设置服务URL的dynamic参数
                         url = url.addParameterIfAbsent(DYNAMIC_KEY, registryURL.getParameter(DYNAMIC_KEY));
+                        // 创建monitorUrl，并作为monitor参数添加到服务URL中
                         URL monitorUrl = ConfigValidationUtils.loadMonitor(this, registryURL);
                         if (monitorUrl != null) {
                             url = url.addParameterAndEncoded(MONITOR_KEY, monitorUrl.toFullString());
@@ -491,23 +598,31 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
                                 logger.info("Export dubbo service " + interfaceClass.getName() + " to url " + url);
                             }
                         }
-
+                        // 设置服务URL的proxy参数，即生成动态代理方式(jdk或是javassist)，作为参数添加到RegistryURL中
                         // For providers, this is used to enable custom proxy to generate invoker
                         String proxy = url.getParameter(PROXY_KEY);
                         if (StringUtils.isNotEmpty(proxy)) {
                             registryURL = registryURL.addParameter(PROXY_KEY, proxy);
                         }
-                        // ref ，interfaceClass 是在哪里赋值的？
+
+                        // 为服务实现类的对象创建相应的Invoker，getInvoker()方法的第三个参数中，会将服务URL作为export参数添加到RegistryURL中
+                        // 这里的PROXY_FACTORY是ProxyFactory接口的适配器
+                        // ref ，interfaceClass 是在哪里赋值的？在启动类中自己赋值的
                         // service.setInterface(DemoService.class);
                         // service.setRef(new DemoServiceImpl()); -- ref 最后会变成代理？？
                         // 后续向 Invoker 发起调用
                         Invoker<?> invoker = PROXY_FACTORY.getInvoker(ref, (Class) interfaceClass, registryURL.addParameterAndEncoded(EXPORT_KEY, url.toFullString()));
+                        // DelegateProviderMetaDataInvoker是个装饰类，将当前ServiceConfig和Invoker关联起来而已，invoke()方法透传给底层Invoker对象
+
                         DelegateProviderMetaDataInvoker wrapperInvoker = new DelegateProviderMetaDataInvoker(invoker, this);
+                        // 调用Protocol实现(这里的PROTOCOL是Protocol接口的适配器)，进行发布/服务导出
                         // 将服务注册到zk上去 -- org.apache.dubbo.registry.integration.RegistryProtocol.export
                         Exporter<?> exporter = PROTOCOL.export(wrapperInvoker);
                         exporters.add(exporter);
                     }
                 } else {
+                    // 不存在注册中心，仅发布服务，不会将服务信息发布到注册中心。-- Consumer没法在注册中心找到该服务的信息，但是可以直连
+                    // 具体的发布过程与上面的过程类似，只不过不会发布到注册中心
                     if (logger.isInfoEnabled()) {
                         logger.info("Export dubbo service " + interfaceClass.getName() + " to url " + url);
                     }
@@ -517,6 +632,7 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
                     Exporter<?> exporter = PROTOCOL.export(wrapperInvoker);
                     exporters.add(exporter);
                 }
+                // 元数据相关操作
                 /**
                  * @since 2.7.0
                  * ServiceData Store
@@ -535,11 +651,44 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
      * always export injvm
      */
     private void exportLocal(URL url) {
+        // 在 exportLocal() 方法中，会将 Protocol 替换成 injvm 协议，将 host 设置成 127.0.0.1，将 port 设置为 0，得到新的 LocalURL，
+        // injvm://127.0.0.1/org.apache.dubbo.demo.DemoService?anyhost=true
+        //
+        //&application=dubbo-demo-api-provider
+        //
+        //&bind.ip=172.17.108.185
+        //
+        //&bind.port=20880
+        //
+        //&default=true
+        //
+        //&deprecated=false
+        //
+        //&dubbo=2.0.2
+        //
+        //&dynamic=true
+        //
+        //&generic=false
+        //
+        //&interface=org.apache.dubbo.demo.DemoService
+        //
+        //&methods=sayHello,sayHelloAsync
+        //
+        //&pid=4249
+        //
+        //&release=
+        //
+        //&side=provider
+        //
+        //&timestamp=1600440074214
         URL local = URLBuilder.from(url)
                 .setProtocol(LOCAL_PROTOCOL)
                 .setHost(LOCALHOST_VALUE)
                 .setPort(0)
                 .build();
+        // 通过 ProxyFactory 接口适配器找到对应的 ProxyFactory 实现（默认使用 JavassistProxyFactory），
+        // 并调用 getInvoker() 方法创建 Invoker 对象；最后，通过 Protocol 接口的适配器查找到 InjvmProtocol 实现，并调用 export() 方法进行发布。
+        // todo 怎么定位到具体的 PROTOCOL 和 PROXY_FACTORY
         Exporter<?> exporter = PROTOCOL.export(
                 PROXY_FACTORY.getInvoker(ref, (Class) interfaceClass, local));
         exporters.add(exporter);
