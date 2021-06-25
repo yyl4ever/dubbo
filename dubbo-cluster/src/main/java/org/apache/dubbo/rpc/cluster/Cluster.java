@@ -28,6 +28,7 @@ import org.apache.dubbo.rpc.cluster.support.FailoverCluster;
  * <a href="http://en.wikipedia.org/wiki/Computer_cluster">Cluster</a>
  * <a href="http://en.wikipedia.org/wiki/Fault-tolerant_system">Fault-Tolerant</a>
  * 提供了我们常说的集群容错功能，将多个提供者合并为一个 Cluster Invoker，并将其暴露给消费者
+ * failover/failback/failsafe/failfast/forking/broadcast，这几类才属于集群容错的范畴
  */
 @SPI(FailoverCluster.NAME)
 public interface Cluster {

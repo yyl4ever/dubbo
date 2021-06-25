@@ -47,12 +47,22 @@ public class AsyncToSyncInvoker<T> implements Invoker<T> {
         return invoker.getInterface();
     }
 
+    /**
+     * 客户端用户线程的等待，也就是一次请求在等待响应
+     *
+     * @param invocation
+     * @return
+     * @throws RpcException
+     */
     @Override
     public Result invoke(Invocation invocation) throws RpcException {
+        // 实际返回类型：AsyncRpcResult -- DubboInvoker.doInvoke
         Result asyncResult = invoker.invoke(invocation);
 
         try {
             if (InvokeMode.SYNC == ((RpcInvocation) invocation).getInvokeMode()) {
+                // 每个用户线程发送请求后，会调用不同 DefaultFuture 对象(2.6.x)的 get 方法进行等待(2.7.x，是在
+                // AsyncRpcResult.get 方法中等待，而在该方法中，其实是调用了队列的 take 进行阻塞等待)
                 // 调用get()方法，阻塞等待响应返回
                 /**
                  * NOTICE!

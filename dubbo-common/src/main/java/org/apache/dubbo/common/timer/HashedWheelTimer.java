@@ -429,6 +429,7 @@ public class HashedWheelTimer implements Timer {
      * @param delay
      * @param unit
      * @return
+     * 只需要告诉 newTimeout 方法，我们要每隔多少时间执行一次什么任务就行
      */
     @Override
     public Timeout newTimeout(TimerTask task, long delay, TimeUnit unit) {

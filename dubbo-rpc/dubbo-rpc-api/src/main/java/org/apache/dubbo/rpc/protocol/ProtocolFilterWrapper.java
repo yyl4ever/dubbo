@@ -49,6 +49,16 @@ public class ProtocolFilterWrapper implements Protocol {
         this.protocol = protocol;
     }
 
+    /**
+     * EchoFilter -> ClassLoaderFilter -> GenericFilter -> ContextFilter ->
+     * ExecuteLimitFilter -> TraceFilter -> TimeoutFilter -> MonitorFilter ->
+     * ExceptionFilter -- 是怎么观测出来是这个顺序的？
+     * @param invoker
+     * @param key
+     * @param group
+     * @param <T>
+     * @return
+     */
     private static <T> Invoker<T> buildInvokerChain(final Invoker<T> invoker, String key, String group) {
         Invoker<T> last = invoker;
          // 根据 URL 中携带的配置信息，确定当前激活的 Filter 扩展实现有哪些，形成 Filter 集合

@@ -29,9 +29,16 @@ public interface Constants {
      * which can set the number of long TCP connections shared to avoid the bottleneck of sharing a single long TCP connection.
      */
     String DEFAULT_SHARE_CONNECTIONS = "1";
-
+    /**
+     * 在老的（2.7.5 版本之前）线程池模型中，当业务数据返回后，默认在 IO 线程上进行反序列化操作，
+     * 如果配置了 decode.in.io 参数为 false（默认为 true），则延迟到独立的客户端线程池进行反序列化操作。
+     */
     String DECODE_IN_IO_THREAD_KEY = "decode.in.io";
 
+    /**
+     * 2.7.5 版本以后，默认值从 true 变为 false
+     * 2.7.5 版本之前，业务数据返回后，默认在 IO 线程里面进行反序列化的操作。而2.7.5 版本之后，默认是延迟到客户端线程池里面进行反序列化的操作。
+     */
     boolean DEFAULT_DECODE_IN_IO_THREAD = false;
 
     /**

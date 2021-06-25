@@ -43,17 +43,20 @@ public class ReferenceConfigCache {
      * Create the key with the <b>Group</b>, <b>Interface</b> and <b>version</b> attribute of {@link ReferenceConfigBase}.
      * <p>
      * key example: <code>group1/org.apache.dubbo.foo.FooService:1.0.0</code>.
+     *
+     * KeyGenerator -- 修改缓存 Key 的生成逻辑
      */
     public static final KeyGenerator DEFAULT_KEY_GENERATOR = referenceConfig -> {
         String iName = referenceConfig.getInterface();
         if (StringUtils.isBlank(iName)) {
+            // 获取服务接口名称
             Class<?> clazz = referenceConfig.getInterfaceClass();
             iName = clazz.getName();
         }
         if (StringUtils.isBlank(iName)) {
             throw new IllegalArgumentException("No interface info in ReferenceConfig" + referenceConfig);
         }
-
+        // Key的格式是group/interface:version
         StringBuilder ret = new StringBuilder();
         if (!StringUtils.isBlank(referenceConfig.getGroup())) {
             ret.append(referenceConfig.getGroup()).append("/");
@@ -65,12 +68,19 @@ public class ReferenceConfigCache {
         return ret.toString();
     };
 
+    /**
+     * Key 是由 Group、服务接口和 version 构成
+     */
     static final ConcurrentMap<String, ReferenceConfigCache> CACHE_HOLDER = new ConcurrentHashMap<String, ReferenceConfigCache>();
     private final String name;
     private final KeyGenerator generator;
-
+    /**
+     * 该集合用来存储已经被处理的 ReferenceConfig 对象。
+     */
     private final ConcurrentMap<String, ReferenceConfigBase<?>> referredReferences = new ConcurrentHashMap<>();
-
+    /**
+     * 该集合用来存储服务接口的全部代理对象，其中第一层 Key 是服务接口的类型，第二层 Key 是上面介绍的 KeyGenerator 为不同服务提供方生成的 Key，Value 是服务的代理对象。
+     */
     private final ConcurrentMap<Class<?>, ConcurrentMap<String, Object>> proxies = new ConcurrentHashMap<>();
 
     private ReferenceConfigCache(String name, KeyGenerator generator) {
@@ -104,14 +114,19 @@ public class ReferenceConfigCache {
 
     @SuppressWarnings("unchecked")
     public <T> T get(ReferenceConfigBase<T> referenceConfig) {
+        // 生成服务提供方对应的Key
         String key = generator.generateKey(referenceConfig);
+        // 获取接口类型
         Class<?> type = referenceConfig.getInterfaceClass();
-
+        // 获取该接口对应代理对象集合
         proxies.computeIfAbsent(type, _t -> new ConcurrentHashMap<>());
 
         ConcurrentMap<String, Object> proxiesOfType = proxies.get(type);
+        // 根据Key获取服务提供方对应的代理对象
         proxiesOfType.computeIfAbsent(key, _k -> {
+            // 服务引用
             Object proxy = referenceConfig.get();
+            // 将ReferenceConfig记录到referredReferences集合
             referredReferences.put(key, referenceConfig);
             return proxy;
         });

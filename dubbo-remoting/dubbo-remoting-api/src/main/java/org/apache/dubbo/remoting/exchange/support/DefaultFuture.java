@@ -47,11 +47,17 @@ import static org.apache.dubbo.common.constants.CommonConstants.TIMEOUT_KEY;
 public class DefaultFuture extends CompletableFuture<Object> {
 
     private static final Logger logger = LoggerFactory.getLogger(DefaultFuture.class);
-//管理请求与 Channel 之间的关联关系，其中 Key 为请求 ID，Value 为发送请求的 Channel。
+    /**
+     * 管理请求与 Channel 之间的关联关系，其中 Key 为请求 ID，Value 为发送请求的 Channel。
+     */
     private static final Map<Long, Channel> CHANNELS = new ConcurrentHashMap<>();
-//管理请求与 DefaultFuture 之间的关联关系，其中 Key 为请求 ID，Value 为请求对应的 Future。
+    /**
+     * 管理请求与 DefaultFuture 之间的关联关系，其中 Key 为请求 ID，Value 为请求对应的 Future。
+     */
     private static final Map<Long, DefaultFuture> FUTURES = new ConcurrentHashMap<>();
-//  static 字段，Dubbo 中对时间轮的实现, 所有 DefaultFuture 对象共用一个
+    /**
+     * static 字段，Dubbo 中对时间轮的实现, 所有 DefaultFuture 对象共用一个 -- 你发起一个请求，指定时间内没有返回结果，于是就取消（future.cancel）这个请求。
+     */
     public static final Timer TIME_OUT_TIMER = new HashedWheelTimer(
             new NamedThreadFactory("dubbo-future-timeout", true),
             30,
@@ -59,19 +65,19 @@ public class DefaultFuture extends CompletableFuture<Object> {
 
     // invoke id. 请求以及请求的 ID
     private final Long id;
-    //：发送请求的 Channel
+    // 发送请求的 Channel
     private final Channel channel;
-    //请求以及请求的 ID
+    // 请求以及请求的 ID
     private final Request request;
-    //整个请求-响应交互完成的超时时间
+    // 整个请求-响应交互完成的超时时间
     private final int timeout;
-    //该 DefaultFuture 的创建时间
+    // 该 DefaultFuture 的创建时间
     private final long start = System.currentTimeMillis();
-    //请求发送的时间
+    // 请求发送的时间
     private volatile long sent;
-    //该定时任务到期时，表示对端响应超时。
+    // 该定时任务到期时，表示对端响应超时。
     private Timeout timeoutCheckTask;
-//请求关联的线程池
+    // 请求关联的线程池
     private ExecutorService executor;
 
     public ExecutorService getExecutor() {
@@ -88,7 +94,7 @@ public class DefaultFuture extends CompletableFuture<Object> {
         this.id = request.getId();
         this.timeout = timeout > 0 ? timeout : channel.getUrl().getPositiveParameter(TIMEOUT_KEY, DEFAULT_TIMEOUT);
         // put into waiting map.
-        FUTURES.put(id, this);
+        FUTURES.put(id, this);// this 还在初始化的过程中
         CHANNELS.put(id, channel);
     }
 
@@ -104,8 +110,8 @@ public class DefaultFuture extends CompletableFuture<Object> {
 
     /**
      * init a DefaultFuture
-     * 1.init a DefaultFuture
-     * 2.timeout check
+     * 1.init a DefaultFuture 初始化 DefaultFuture 。
+     * 2.timeout check 检测是否超时。
      *
      * 先初始化上述字段，并创建请求相应的超时定时任务
      *
@@ -115,7 +121,7 @@ public class DefaultFuture extends CompletableFuture<Object> {
      * @return a new DefaultFuture
      */
     public static DefaultFuture newFuture(Channel channel, Request request, int timeout, ExecutorService executor) {
-        //// 创建DefaultFuture对象，并初始化其中的核心字段
+        //// 创建DefaultFuture对象，并初始化其中的核心字段 -- 初始化 DefaultFuture，不简单
         final DefaultFuture future = new DefaultFuture(channel, request, timeout);
         future.setExecutor(executor);
         //    // 对于ThreadlessExecutor的特殊处理，ThreadlessExecutor可以关联一个waitingFuture，就是这里创建DefaultFuture对象
@@ -176,18 +182,26 @@ public class DefaultFuture extends CompletableFuture<Object> {
         received(channel, response, false);
     }
 
+    /**
+     * 全局只有两个调用的地方，一个是前面讲的正常返回后的调用，一个就是这里超时之后的调用
+     * 也就是不论怎样，最终都会调用这个 received 方法，最终都会通过这个方法把对应调用编号的 DefaultFuture 对象从 FUTURE 这个 MAP 中移除。
+     * @param channel
+     * @param response
+     * @param timeout
+     */
     public static void received(Channel channel, Response response, boolean timeout) {
         try {
             // 清理FUTURES中记录的请求ID与DefaultFuture之间的映射关系
-            DefaultFuture future = FUTURES.remove(response.getId());
+            DefaultFuture future = FUTURES.remove(response.getId()); // 调用编号从 FUTURES 这个 MAP 中移除并获取出对应的请求。
             if (future != null) {
                 Timeout t = future.timeoutCheckTask;
                 if (!timeout) {// 未超时，取消定时任务
                     // decrease Time
                     t.cancel();
                 }
+                // 把响应返回给对应的用户线程了
                 future.doReceived(response);
-            } else {// 查找不到关联的DefaultFuture会打印日志
+            } else {// 查找不到关联的DefaultFuture会打印日志 -- 如果获取到的请求是 null，说明超时了。
                 logger.warn("The timeout response finally returned at "
                         + (new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(new Date()))
                         + ", response status is " + response.getStatus()
@@ -290,6 +304,10 @@ public class DefaultFuture extends CompletableFuture<Object> {
             this.requestID = requestID;
         }
 
+        /**
+         * 触发后会根据调用编号去 FUTURES 里面取 DefaultFuture。
+         * @param timeout a handle which is associated with this task
+         */
         @Override
         public void run(Timeout timeout) {
             DefaultFuture future = DefaultFuture.getFuture(requestID);
@@ -302,6 +320,13 @@ public class DefaultFuture extends CompletableFuture<Object> {
                 future.getExecutor().execute(() -> notifyTimeout(future));
             } else {
                 // 当响应超时的时候，TimeoutCheckTask 会创建一个 Response，并调用前面介绍的 DefaultFuture.received() 方法。
+                /**
+                 * 如果一个 future 正常完成之后，会从 FUTURES 里面移除掉。
+                 *
+                 * 那么如果到点了，根据编号没有取到 Future 或者取到的这个 Future 的状态是 done 了，则说明这个请求没有超时。
+                 *
+                 * 如果这个 Future 还在 FUTURES 里面，含义就是到点了你咋还在里面呢？那肯定是超时了，调用 notifyTimeout 方法，是否超时参数给 true
+                 */
                 notifyTimeout(future);
             }
         }

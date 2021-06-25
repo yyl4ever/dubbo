@@ -145,7 +145,10 @@ public class DubboBootstrap extends GenericEventListener {
     private final ConfigManager configManager;
 
     private final Environment environment;
-
+    /**
+     * 为了避免底层连接泄漏造成性能问题，从 Dubbo 2.4.0 版本开始，
+     * Dubbo 提供了 ReferenceConfigCache 用于缓存 ReferenceConfig 实例。
+     */
     private ReferenceConfigCache cache;
 
     private volatile boolean exportAsync;
@@ -374,6 +377,11 @@ public class DubboBootstrap extends GenericEventListener {
         return reference(builder.build());
     }
 
+    /**
+     * ReferenceConfig 对象会通过 DubboBootstrap.reference() 方法添加到 ConfigManager 中进行管理
+     * @param referenceConfig
+     * @return
+     */
     public DubboBootstrap reference(ReferenceConfig<?> referenceConfig) {
         configManager.addReference(referenceConfig);
         return this;
@@ -762,7 +770,7 @@ public class DubboBootstrap extends GenericEventListener {
                 //3. Register the local ServiceInstance if required
                 registerServiceInstance();
             }
-            // 处理Consumer的ReferenceConfig
+            // 处理Consumer的ReferenceConfig，服务引用
             referServices();
             if (asyncExportingFutures.size() > 0) {
                 // 异步发布服务，会启动一个线程监听发布是否完成，完成之后会将ready设置为true
@@ -976,22 +984,31 @@ public class DubboBootstrap extends GenericEventListener {
 
     private void referServices() {
         if (cache == null) {
+            // 初始 ReferenceConfigCache -- 在 CACHE_HOLDER 集合中添加一个 Key 为“DEFAULT”的
+            // ReferenceConfigCache 对象（使用默认的 KeyGenerator 实现），它将作为默认的 ReferenceConfigCache 对象。
             cache = ReferenceConfigCache.getCache();
         }
 
+        // 获取所有 ReferenceConfig 列表，并根据 ReferenceConfig 获取对应的代理对象
+        // 注：服务引用的核心实现在 ReferenceConfig 之中，一个 ReferenceConfig 对象对应一个服务接口，
+        // 每个 ReferenceConfig 对象中都封装了与注册中心的网络连接，以及与 Provider 的网络连接，这是一个非常重要的对象。
         configManager.getReferences().forEach(rc -> {
             // TODO, compatible with  ReferenceConfig.refer()
             ReferenceConfig referenceConfig = (ReferenceConfig) rc;
             referenceConfig.setBootstrap(this);
 
             if (rc.shouldInit()) {
+                // 无论是同步服务引用还是异步服务引用，都会调用 ReferenceConfigCache.get() 方法，创建并缓存代理对象
+                // 检测ReferenceConfig是否已经初始化
                 if (referAsync) {
+                    // 异步
                     CompletableFuture<Object> future = ScheduledCompletableFuture.submit(
                             executorRepository.getServiceExporterExecutor(),
                             () -> cache.get(rc)
                     );
                     asyncReferringFutures.add(future);
                 } else {
+                    // 同步
                     cache.get(rc);
                 }
             }

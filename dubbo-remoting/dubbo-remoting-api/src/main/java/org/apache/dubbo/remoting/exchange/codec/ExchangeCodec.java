@@ -112,6 +112,7 @@ public class ExchangeCodec extends TelnetCodec {
      */
     @Override
     protected Object decode(Channel channel, ChannelBuffer buffer, int readable, byte[] header) throws IOException {
+        // 检查 header 的前两个字节是不是魔数，如果不是，则继续读取数据，这里其实在用魔数解决粘包/半包问题
         // check magic number.
         if (readable > 0 && header[0] != MAGIC_HIGH
                 || readable > 1 && header[1] != MAGIC_LOW) {
@@ -129,11 +130,13 @@ public class ExchangeCodec extends TelnetCodec {
             }
             return super.decode(channel, buffer, readable, header);
         }
+        // 如果读取长度还是小于 16 字节，说明需要读取更多数据
         // check length.
         if (readable < HEADER_LENGTH) {
             return DecodeResult.NEED_MORE_INPUT;
         }
 
+        // 获取返回报文的长度，并检查报文长度是否超过限制(默认长度限制为 8M)
         // get data length.
         int len = Bytes.bytes2int(header, 12);
         checkPayload(channel, len);
@@ -252,7 +255,7 @@ public class ExchangeCodec extends TelnetCodec {
         if (req.isEvent()) {// 设置协议头中的Event标志位
             header[2] |= FLAG_EVENT;
         }
-        // 将请求ID记录到请求头中
+        // 将请求ID记录到请求头中 -- 设置请求编号（每个请求和响应的 header 里面都有一个请求编号，这个编号是一一对应的，这是协议规定好的。）
         // set request id.
         Bytes.long2bytes(req.getId(), header, 4);
         // 下面开始序列化请求，并统计序列化后的字节数

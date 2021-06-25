@@ -186,7 +186,8 @@ public class AsyncRpcResult implements Result {
             ThreadlessExecutor threadlessExecutor = (ThreadlessExecutor) executor;
             threadlessExecutor.waitAndDrain();
         }
-        return responseFuture.get(timeout, unit);
+        // 当用户线程真正执行到这行代码，不会等待，等待的操作都在 waitAndDrain 方法里了
+        return responseFuture.get(timeout, unit);// 这里返回的就是最终服务端的数据，或者是返回异常
     }
 
     @Override

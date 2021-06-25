@@ -70,6 +70,13 @@ public class DecodeableRpcResult extends AppResponse implements Codec, Decodeabl
         throw new UnsupportedOperationException();
     }
 
+    /**
+     * 对响应报文的响应体进行解码
+     * @param channel channel.
+     * @param input   input stream.
+     * @return
+     * @throws IOException
+     */
     @Override
     public Object decode(Channel channel, InputStream input) throws IOException {
         if (log.isDebugEnabled()) {
@@ -77,12 +84,12 @@ public class DecodeableRpcResult extends AppResponse implements Codec, Decodeabl
             log.debug("Decoding in thread -- [" + thread.getName() + "#" + thread.getId() + "]");
         }
 
-        // 确定当前使用的序列化方式
+        // 确定当前使用的序列化方式 Hessian2Serialization，就是 Dubbo 默认的序列化器
         ObjectInput in = CodecSupport.getSerialization(channel.getUrl(), serializationType)
                 // 对字节流进行解码
                 .deserialize(channel.getUrl(), input);
 
-        // 读取一个 byte 的标志位
+        // 读取一个 byte 的标志位，代表响应类型，其中 4 ：响应结果包含上下文信息
         byte flag = in.readByte();
         switch (flag) {
             case DubboCodec.RESPONSE_NULL_VALUE:
@@ -97,6 +104,8 @@ public class DecodeableRpcResult extends AppResponse implements Codec, Decodeabl
                 handleAttachment(in);
                 break;
             case DubboCodec.RESPONSE_VALUE_WITH_ATTACHMENTS:
+                // 处理了返回值（handleValue）也处理了上下文信息（handleAttachment）
+                // 不管是在 IO 线程里面解码还是在客户端线程池里面解码，都要调用这个方法(解码方法)。只不过是谁先谁后的问题。
                 handleValue(in);
                 handleAttachment(in);
                 break;
@@ -115,6 +124,10 @@ public class DecodeableRpcResult extends AppResponse implements Codec, Decodeabl
 
     @Override
     public void decode() throws Exception {
+        // 因为 IO 线程和客户端线程池都要调用这个方法进行解码，我们总不能解码两次吧，那怎么保证只解码一次呢？
+        // 答案就是设置标识位。
+        // 因为我们知道如果是在 IO 线程里面解码，那么该操作调用解码方法后，肯定是先于客户端线程池调用的。
+        // 有先后顺序就好办了。我们就可以设置标识位：hasDecoded(判断是否解码过，默认 false)
         if (!hasDecoded && channel != null && inputStream != null) {
             try {
                 decode(channel, inputStream);
@@ -125,6 +138,9 @@ public class DecodeableRpcResult extends AppResponse implements Codec, Decodeabl
                 response.setStatus(Response.CLIENT_ERROR);
                 response.setErrorMessage(StringUtils.toString(e));
             } finally {
+                // 调用一次后变更标识位
+                // 当在 IO 线程解析后，会把标识位设置为 true。
+                // 然后客户端线程池再走到这个逻辑的时候，发现标识位是 true 了，不进行再次操作，问题就这样被解决了。
                 hasDecoded = true;
             }
         }

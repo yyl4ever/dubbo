@@ -52,9 +52,10 @@ public class ChannelEventRunnable implements Runnable {
 
     @Override
     public void run() {
-        if (state == ChannelState.RECEIVED) {
+        if (state == ChannelState.RECEIVED) { // todo??
             try {
-                handler.received(channel, message);
+                // 这个步骤内部是怎么进行的？DecodeHandler --> org.apache.dubbo.remoting.exchange.support.header.HeaderExchangeHandler.received
+                handler.received(channel, message);// 最终调用 DefaultFuture.doReceived()
             } catch (Exception e) {
                 logger.warn("ChannelEventRunnable handle " + state + " operation error, channel is " + channel
                         + ", message is " + message, e);

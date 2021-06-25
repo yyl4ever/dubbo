@@ -24,6 +24,7 @@ import org.apache.dubbo.remoting.transport.dispatcher.all.AllDispatcher;
 /**
  * ChannelHandlerWrapper (SPI, Singleton, ThreadSafe)
  * 每个 WrappedChannelHandler 实现类的对象都由一个相应的 Dispatcher 实现类创建
+ * https://mmbiz.qpic.cn/mmbiz_png/lnCqjsQ6QHc3kY05R0DDoLSiaQXu9K67BXunMwuJck9uceEoSsVCXwBR1tTzwRCsvDNjsUZTciaLRSJicuBEXnuCA/640?wx_fmt=png&tp=webp&wxfrom=5&wx_lazy=1&wx_co=1
  */
 @SPI(AllDispatcher.NAME)// 默认扩展名是all
 public interface Dispatcher {

@@ -79,7 +79,9 @@ public class AllChannelHandler extends WrappedChannelHandler {
     @Override
     public void received(Channel channel, Object message) throws RemotingException {
         ExecutorService executor = getPreferredExecutorService(message);// 获取线程池
-        try {// 将消息封装成ChannelEventRunnable任务，提交到线程池中执行
+        try {
+            // 将消息封装成ChannelEventRunnable任务，提交到线程池中执行 -- Dubbo 默认的派发策略是 ALL，所以所有的响应都会被派发到客户端线程池里面去
+            // 当接收到服务端的响应后，响应事件也会被扔到线程池里面，从代码中可以看到，扔进去的就是一个 Runable 任务。 -- 即 ThreadLessExecutor.execute, queue 被添加了任务，消费方阻塞的线程会活过来
             executor.execute(new ChannelEventRunnable(channel, handler, ChannelState.RECEIVED, message));
         } catch (Throwable t) {
             // 如果线程池满了，请求会被拒绝，这里会根据请求配置决定是否返回一个说明性的响应

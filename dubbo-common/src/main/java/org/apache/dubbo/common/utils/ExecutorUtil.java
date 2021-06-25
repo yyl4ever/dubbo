@@ -130,6 +130,7 @@ public class ExecutorUtil {
      */
     public static URL setThreadName(URL url, String defaultName) {
         String name = url.getParameter(THREAD_NAME_KEY, defaultName);
+        // 设置线程名称
         name = name + "-" + url.getAddress();
         url = url.addParameter(THREAD_NAME_KEY, name);
         return url;

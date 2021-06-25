@@ -136,7 +136,7 @@ final class HeaderExchangeChannel implements ExchangeChannel {
         // 而这里的 DefaultFuture 就表示此次请求-响应是否完成，也就是说，要收到响应为 Future 才算完成。
         DefaultFuture future = DefaultFuture.newFuture(channel, req, timeout, executor);
         try {
-            //将请求通过底层的 Dubbo Channel 发送出去
+            //将请求(通过底层的 Dubbo Channel)发送出去
             //发送过程中会触发沿途 ChannelHandler 的 sent() 方法，
             // 其中的 HeaderExchangeHandler 会调用 DefaultFuture.sent() 方法更新 sent 字段，
             // 记录请求发送的时间戳。后续如果响应超时，则会将该发送时间戳添加到提示信息中。

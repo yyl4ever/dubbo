@@ -34,8 +34,8 @@ public class Request {
     private String mVersion;// 请求版本号
     // 请求的双向标识，如果该字段设置为true，则Server端在收到请求后，需要给Client返回一个响应
     private boolean mTwoWay = true;
-    // 事件标识，例如心跳请求、只读请求等，都会带有这个标识
 
+    // 事件标识，例如心跳请求、只读请求等，都会带有这个标识
     private boolean mEvent = false;
     // 请求发送到Server之后，由Decoder将二进制数据解码成Request对象，
     // 如果解码环节遇到异常，则会设置该标识，然后交由其他ChannelHandler根据
@@ -54,6 +54,7 @@ public class Request {
     }
 
     private static long newId() {
+        // 当增加到 MAX_VALUE 后再次调用会变成 MIN_VALUE。但是没有关系，负数也是可以当做 ID 来用的。
         // getAndIncrement() When it grows to MAX_VALUE, it will grow to MIN_VALUE, and the negative can be used as ID
         return INVOKE_ID.getAndIncrement();
     }

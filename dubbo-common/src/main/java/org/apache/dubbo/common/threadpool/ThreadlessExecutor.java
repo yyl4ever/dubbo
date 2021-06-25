@@ -43,7 +43,7 @@ import java.util.concurrent.TimeoutException;
  */
 public class ThreadlessExecutor extends AbstractExecutorService {
     private static final Logger logger = LoggerFactory.getLogger(ThreadlessExecutor.class.getName());
-//阻塞队列，用来在 IO 线程和业务线程之间传递任务。
+    //阻塞队列，用来在 IO 线程和业务线程之间传递任务。
     private final BlockingQueue<Runnable> queue = new LinkedBlockingQueue<>();
     /**
      * ThreadlessExecutor 底层关联的共享线程池，当业务线程已经不再等待响应时，会由该共享线程执行提交的任务。
@@ -99,12 +99,13 @@ public class ThreadlessExecutor extends AbstractExecutorService {
         if (finished) {// 检测当前ThreadlessExecutor状态
             return;
         }
-
-        Runnable runnable = queue.take();// 获取阻塞队列中获取任务
+        // Dubbo 会保证当接口不管是否超时，都会有一个 Runable 的任务被扔到队列里面。所以 take 这里最多也就是等待超时时间这么长时间。--????
+        // 如果队列里面没有任务，那么用户线程就会一直在 take 这里阻塞等待 -- 放任务：org.apache.dubbo.common.threadpool.ThreadlessExecutor.execute
+        Runnable runnable = queue.take();// 获取阻塞队列中获取任务 -- org.apache.dubbo.remoting.transport.dispatcher.all.AllChannelHandler.received 中提交的任务
 
         synchronized (lock) {
             waiting = false;// 修改waiting状态
-            runnable.run();// 执行任务
+            runnable.run();// 执行任务 -- 注意 run 方法被重写了
         }
 
         runnable = queue.poll();// 如果阻塞队列中还有其他任务，也需要一并执行

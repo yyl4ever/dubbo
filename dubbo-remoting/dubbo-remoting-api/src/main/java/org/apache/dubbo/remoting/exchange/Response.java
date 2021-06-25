@@ -35,6 +35,7 @@ public class Response {
 
     /**
      * server side timeout.
+     * 服务端超时
      */
     public static final byte SERVER_TIMEOUT = 31;
 
@@ -45,26 +46,31 @@ public class Response {
 
     /**
      * request format error.
+     * 请求报文格式错误
      */
     public static final byte BAD_REQUEST = 40;
 
     /**
      * response format error.
+     * 响应报文格式错误
      */
     public static final byte BAD_RESPONSE = 50;
 
     /**
      * service not found.
+     * 没找到服务
      */
     public static final byte SERVICE_NOT_FOUND = 60;
 
     /**
      * service error.
+     * 服务调用错误
      */
     public static final byte SERVICE_ERROR = 70;
 
     /**
      * internal server error.
+     * 服务内部错误
      */
     public static final byte SERVER_ERROR = 80;
 
@@ -75,6 +81,7 @@ public class Response {
 
     /**
      * server side threadpool exhausted and quick return.
+     * 服务端线程池满了，拒绝执行
      */
     public static final byte SERVER_THREADPOOL_EXHAUSTED_ERROR = 100;
 
