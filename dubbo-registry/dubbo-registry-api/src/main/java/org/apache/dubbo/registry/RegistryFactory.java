@@ -43,7 +43,8 @@ public interface RegistryFactory {
      * @param url Registry address, is not allowed to be empty
      * @return Registry reference, never return empty value
      */
-    //@Adaptive 注解表示会生成适配器类并根据 URL 参数中的 protocol 参数值选择相应的实现。
-    @Adaptive({"protocol"})//Dubbo 在运行时会为其动态生成相应的 “$Adaptive” 类型
-    Registry getRegistry(URL url);//URL 一个很重要的作用就是与 @Adaptive 注解一起选择合适的扩展实现类，比如 ZookeeperRegistryFactory todo
+    // 动态生成相应的 “$Adaptive” 类型（方法依托于类，所以肯定是先有类，只是这个类是根据 url 中的 protocol 参数决定的），
+    // 并根据 URL 参数中的 protocol 参数值选择相应的实现，比如 ZookeeperRegistryFactory。
+    @Adaptive({"protocol"})
+    Registry getRegistry(URL url);
 }
